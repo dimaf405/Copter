@@ -522,6 +522,9 @@ Mode *Rover::mode_from_mode_num(const enum Mode::Number num)
     case Mode::Number::ACRO:
         ret = &mode_acro;
         break;
+    case Mode::Number::DrawStar:
+        ret = &mode_drawstar;       //增加新模式
+        break;
     case Mode::Number::STEERING:
         ret = &mode_steering;
         break;

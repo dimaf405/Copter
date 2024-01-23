@@ -30,7 +30,7 @@
 */
 
 #include "Rover.h"
-
+#include <GCS_MAVLink/GCS.h>
 #define FORCE_VERSION_H_INCLUDE
 #include "version.h"
 #undef FORCE_VERSION_H_INCLUDE
@@ -141,7 +141,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(crash_check,            10,    200, 123),
     SCHED_TASK(cruise_learn_update,    50,    200, 126),
 #if ADVANCED_FAILSAFE == ENABLED
-    SCHED_TASK(afs_fs_check,           10,    200, 129),
+    SCHED_TASK(                  ,           10,    200, 129),
 #endif
 };
 
@@ -478,6 +478,11 @@ void Rover::one_second_loop(void)
     g2.wp_nav.set_turn_params(g2.turn_radius, g2.motors.have_skid_steering());
     g2.pos_control.set_turn_params(g2.turn_radius, g2.motors.have_skid_steering());
     g2.wheel_rate_control.set_notch_sample_rate(AP::scheduler().get_filtered_loop_rate_hz());
+
+    //以下为自定义代码
+    gcs().send_text(MAV_SEVERITY_ALERT,
+                    "curccent_test:%0.1fm",
+                    3.14f);
 }
 
 void Rover::update_current_mode(void)

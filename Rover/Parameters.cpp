@@ -705,6 +705,13 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: mode_circle.cpp
     AP_SUBGROUPINFO(mode_circle, "CIRC", 57, ParametersG2, ModeCircle),
 
+
+    // @Param: SRAT_R_CM
+    // @DisplayName: star radius cm
+    // @Description: 五角星航线中五角星的大小
+    // @Units: cm
+    // @User: Advanced
+    AP_GROUPINFO("STAR_R_CM", 38, ParametersG2, star_radius_cm, 1000.0f),
     AP_GROUPEND
 };
 
@@ -922,3 +929,6 @@ void Rover::load_parameters(void)
     AP_Param::convert_class(info.old_key, &fence, fence.var_info, 17, 4049, false);
 #endif
 }
+
+
+

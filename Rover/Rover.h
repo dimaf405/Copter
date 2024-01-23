@@ -106,7 +106,7 @@ public:
 #if MODE_DOCK_ENABLED == ENABLED
     friend class ModeDock;
 #endif
-
+    friend class ModeDrawStar;           //增加画五星模式
     friend class RC_Channel_Rover;
     friend class RC_Channels_Rover;
 
@@ -249,6 +249,7 @@ private:
     ModeHold mode_hold;
     ModeManual mode_manual;
     ModeAcro mode_acro;
+    ModeDrawStar mode_drawstar;    //增加画五星模式
     ModeGuided mode_guided;
     ModeAuto mode_auto;
     ModeLoiter mode_loiter;
