@@ -207,6 +207,7 @@ void Rover::Fire_motor()       //
         // start = AP_HAL::millis64();
     // }
 //   fire_motor_rover.function_fire_motor_485(20);
+ //这个是测试
 ;
 }
 
