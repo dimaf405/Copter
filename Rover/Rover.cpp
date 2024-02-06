@@ -194,7 +194,7 @@ void Rover::FireFight_open()   //每20毫秒执行一次
 void Rover::Fire_motor()       //
 {
     ;
-
+    //这个是测试
     // gcs().send_text(MAV_SEVERITY_CRITICAL,  //地面站消息发送
     //     "现在是延迟5s测试:%0.2f",v);
     // uint16_t ms = 10000; 
