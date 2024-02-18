@@ -262,14 +262,15 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
     // RC_Channel &_rc = rc();
     // uint64_t start = AP_HAL::micros64();
     static uint16_t time_samp = 0;            //每个执行周期只能发送一条信息
-    static uint8_t up_down = 0;
-    static uint8_t left_right = 0;
-    static uint8_t wu_zhu = 0;
+    // static uint8_t up_down = 0;
+    // static uint8_t left_right = 0;
+    // static uint8_t wu_zhu = 0;
+    // static uint8_t record_move = 0;
     uint16_t under_offset = 1550;
     uint16_t low_offset = 1450;
     // uint8_t temp;
 
-    static uint8_t time_cnt_up = 0,time_cnt_left = 0,time_cnt_zhu = 0;
+    static uint8_t time_cnt_up = 0,time_cnt_left = 0,time_cnt_zhu = 0,time_cnt_record = 0;
 
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"rcin(9):%d",hal.rcin->read(9));
     // temp = check_send_one(0x01);   //读取消防炮的返回值
@@ -307,7 +308,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
     // }
     if (time_samp <= DT_ms)  //第一个周期
     {
-        if ((hal.rcin->read(2)) > under_offset  && up_down != 1)
+        if ((hal.rcin->read(2)) > under_offset)
         {
             /*写入两个地址的格式 从机ID 开始写入地址 写入参数1 写入参数2*/
             /*第一个参数是上，第二个是下*/
@@ -326,7 +327,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
             }
             // write_two(0x01,0x000C,1,0);
         }
-        else if ((hal.rcin->read(2)) < low_offset  && up_down != 2)
+        else if ((hal.rcin->read(2)) < low_offset  )
         {
             if (/* condition */time_cnt_up == 0)
             {
@@ -345,7 +346,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
 
             // write_two(0x01,0x000C,0,1);
         }
-        else if(up_down != 3 && ((hal.rcin->read(2)) > low_offset) && ((hal.rcin->read(2)) < under_offset))   //重复发送4次
+        else if( ((hal.rcin->read(2)) > low_offset) && ((hal.rcin->read(2)) < under_offset))   //重复发送4次
         {
             if (/* condition */time_cnt_up == 0)
             {
@@ -366,7 +367,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
 
     else if (time_samp <= 3*DT_ms)  //第二个周期
     {
-        if ((hal.rcin->read(3)) < low_offset && left_right != 1)
+        if ((hal.rcin->read(3)) < low_offset )
         {
 
             if (/* condition */time_cnt_left == 0)
@@ -382,7 +383,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
             }
             // write_two(0x01,0x000E,1,0);
         }
-        else if((hal.rcin->read(3)) > under_offset && left_right != 2)
+        else if((hal.rcin->read(3)) > under_offset )
         {
             if (/* condition */time_cnt_left == 0)
             {
@@ -398,7 +399,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
             }
             // write_two(0x01,0x000E,0,1);
         }
-        else if (left_right != 3 && ((hal.rcin->read(3)) > low_offset) && ((hal.rcin->read(3)) < under_offset))   //重复发送4次
+        else if ( ((hal.rcin->read(3)) > low_offset) && ((hal.rcin->read(3)) < under_offset))   //重复发送4次
         {
             if (/* condition */time_cnt_left == 0)
             {
@@ -419,7 +420,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
 
     else if (time_samp <= 5*DT_ms)  //第三个周期
     {
-        if ((hal.rcin->read(4)) > under_offset  && wu_zhu != 1)
+        if ((hal.rcin->read(4)) > under_offset)
         {
             if (/* condition */time_cnt_zhu == 0)
             {
@@ -434,7 +435,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
             }
             // write_two(0x01,0x0010,1,0);
         }
-        else if((hal.rcin->read(4)) < low_offset && wu_zhu != 2)
+        else if((hal.rcin->read(4)) < low_offset)
         {
             if (/* condition */time_cnt_zhu == 0)
             {
@@ -451,7 +452,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
             // write_two(0x01,0x0010,0,1);
         }
     
-        else if(wu_zhu != 3 && ((hal.rcin->read(4)) > low_offset) && ((hal.rcin->read(4)) < under_offset))
+        else if(((hal.rcin->read(4)) > low_offset) && ((hal.rcin->read(4)) < under_offset))
         {
             if (/* condition */time_cnt_zhu == 0)
             {
@@ -470,8 +471,61 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
 
         }
     }
+    else if(time_samp <= 7*DT_ms)
+    {
+       if ((hal.rcin->read(5)) > under_offset)
+        {
+            if (/* condition */time_cnt_record == 0)
+            {
+                Record_button(0);    //将雾清零             /* code */
+            }
+            time_cnt_record++;
+            if (time_cnt_record >= 2 ) //延时一个执行周期
+            {
+                /* code */
+                playback_button(1);
+                time_cnt_record = 0;
+            }
+            // write_two(0x01,0x0010,1,0);
+        }
+        else if((hal.rcin->read(5)) < low_offset)
+        {
+            if (/* condition */time_cnt_record == 0)
+            {
+                playback_button(0); //将柱清零            /* code */
+            }
+            time_cnt_record++;
+            if (time_cnt_record >= 2 ) //延时一个执行周期
+            {
+                /* code */
+                Record_button(1);
+                time_cnt_record = 0;
+
+            }
+            // write_two(0x01,0x0010,0,1);
+        }
+    
+        else if(((hal.rcin->read(5)) > low_offset) && ((hal.rcin->read(5)) < under_offset))
+        {
+            if (/* condition */time_cnt_record == 0)
+            {
+                playback_button(0);  //将柱清零            /* code */
+            }
+            time_cnt_record++;
+            if (time_cnt_record >= 2 ) //延时一个执行周期
+            {
+                /* code */
+                
+                Record_button(0);
+                time_cnt_record = 0;
+                // wu_zhu++;
+            }
+        // write_two(0x01,0x0010,0,0);
+
+        }        
+    }
     time_samp += DT_ms;
-    if(time_samp == 6*DT_ms)
+    if(time_samp == 8*DT_ms)
     {
         time_samp = 0;
     }
