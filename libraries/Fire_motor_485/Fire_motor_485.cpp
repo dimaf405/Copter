@@ -192,18 +192,18 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     if( golab_cnt == 0)  //如果更新数值没有改变，则见不输出V_L != last_V_L &&
     {
         // V_L = -V_L;
-        if (V_L > 0)
+        if (V_L > 5)
         {
 
             FF.write_two(Left_motor,0X2000,2,(uint16_t)V_L);     //左边轮子反转
             
         }
-        else if(V_L < 0)
+        else if(V_L < -5)
         {
 
             FF.write_two(Left_motor,0X2000,1,(uint16_t)-V_L); //左边轮子正转
         }
-        else if(V_L == 0)
+        else if(abs(V_L) < 5)
         {
 
             if(stop_button)
@@ -224,17 +224,17 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     if(golab_cnt == 1)  //如果更新数值没有改变，则见不输出V_R != last_V_R 
     {
         V_R = -V_R;
-        if (V_R > 0)
+        if (V_R > 5)
         {
 
             FF.write_two(Right_motor,0X2000,2,(uint16_t)V_R); 
         }
-        else if(V_R < 0)
+        else if(V_R < -5)
         {
  
             FF.write_two(Right_motor,0X2000,1,(uint16_t)-V_R); 
         }
-        else if(V_R == 0)
+        else if(abs(V_R) < 5)
         { 
             if(stop_button)
             {
