@@ -18,9 +18,9 @@ void FireFight::uart_init()
     hal.scheduler->delay(100);       //设置电机加减速时间
     write_two(101,0x2003,10,5);
     hal.scheduler->delay(100);       //等待初始化串口
-    write_one(0x01, 0x0002, 100);
+    write_one(0x01, 0x0002, 20);
     hal.scheduler->delay(100);       //上下电机堵转电流
-    write_one(0x01, 0x0003, 100);
+    write_one(0x01, 0x0003, 200);
     hal.scheduler->delay(100);       //雾柱电机堵转电流
     write_one(0x01, 0x0004, 1);
     hal.scheduler->delay(100);       //堵转时间
