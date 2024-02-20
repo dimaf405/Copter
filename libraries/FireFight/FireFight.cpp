@@ -1,13 +1,29 @@
 #include "FireFight.h"
 #include <stdio.h>
 #include <GCS_MAVLink/GCS.h>    //地面站
+#include <array>                // 使用标准库中的array代替C风格数组
 // #include "RC_Channel.h"         //加入遥控读取通道
 // #include "rover/Rover.h"
 
-#define FRAME_LENGTH 8          //帧长
-#define FRAME_HEADER 0x01          //帧头
+#define FRAME_LENGTH 9          //帧长
+#define MAX_ACTIONS 100       // 最大动作数量100
 
-void FireFight::uart_init()
+
+class Action{
+    public:
+        int16_t record_Left_Right_pulse, record_Up_Down_pulse;
+        uint16_t record_delay;
+        Action() : record_Left_Right_pulse(0), record_Up_Down_pulse(0), record_delay(0) {}   //添加默认构建函数
+        Action(int16_t Action_record_Left_Right_pulse, int16_t Action_record_Up_Down_pulse, uint16_t Action_record_delay) : record_Left_Right_pulse(Action_record_Left_Right_pulse), record_Up_Down_pulse(Action_record_Up_Down_pulse), record_delay(Action_record_delay) {}
+};
+
+// const volatile Action actions[MAX_ACTIONS]; // 动作数组
+std::array<Action, MAX_ACTIONS> actions;
+volatile uint8_t num_actions = 0;     // 记录的动作数量
+volatile uint8_t action_index= 0;     // 执行动作
+
+    void
+FireFight::uart_init()
 {
 
     hal.serial(1)->begin(19200);      //初始化串口程序
@@ -24,7 +40,7 @@ void FireFight::uart_init()
     hal.scheduler->delay(100);       //雾柱电机堵转电流
     write_one(0x01, 0x0004, 1);
     hal.scheduler->delay(100);       //堵转时间
-
+    // hal.serial(3)->begin(115200);
     
     
     gcs().send_text(MAV_SEVERITY_CRITICAL,  //地面站消息发送
@@ -65,6 +81,7 @@ void FireFight::write_one(uint8_t address_ID,uint16_t reg_adress,uint16_t reg_nu
     hal.serial(1)->write(data_to_send,cnt);
 }
 
+
 void FireFight::write_two(uint8_t address_ID,uint16_t start_reg_adress,uint16_t val_1,uint16_t val_2)//写两个寄存器，用于归零
 {
     uint8_t data_to_send[15];
@@ -90,95 +107,76 @@ void FireFight::write_two(uint8_t address_ID,uint16_t start_reg_adress,uint16_t 
 
 uint8_t FireFight::check_send_one(uint8_t addressID)
 {
-    uint16_t reg_adress,reg_num;
-    // read any available lines from the lidar
-    for (auto i=0; i<8192; i++) {
-        uint8_t c;
-        if (!hal.serial(1)->read(c)) {
-            break;
-        }
-        // if buffer is empty and this byte is 0x57, add to buffer
-        if (linebuf_len == 0) {
-            if (c == FRAME_HEADER) {
-                linebuf[linebuf_len++] = c;
-            }
-        // buffer is not empty, add byte to buffer
-        } else {
-            // add character to buffer
-            linebuf[linebuf_len++] = c;
-            // if buffer now has 5 items try to decode it
-            if (linebuf_len == FRAME_LENGTH) {
-                // calculate CRC8 (tbd)
-                if (addressID == 0x01)   //如果当前是消防炮返回则使用下面函数
+    // uint16_t reg_adress,reg_num;
+    uint8_t num = hal.serial(1)->available();   //读取串口有多少个数据
+    uint8_t c;
+    static uint8_t stat = 0, len_date = 0;
+    if (num > 0)
+    {
+        // hal.console->printf("当前有%d个数据",num);
+        for (; num > 0; num--)
+        {
+            c = hal.serial(1)->read();
+            if (linebuf_len == 0) {
+                if (c == addressID) //ID正确
                 {
-                    uint16_t crc = 0;
-                    crc = CRC.Funct_CRC16(linebuf,FRAME_LENGTH-2);
-                    // if crc matches, extract contents
-                    if (crc == ((linebuf[6])|linebuf[7]<<8)) {
-                        // calculate distance
-                        reg_adress = ((linebuf[2]<<8)|linebuf[3]);   //获取寄存器地址
-                        reg_num = ((linebuf[4]<<8)|linebuf[5]);      //获取写入数值
-                        switch (reg_adress)
-                        {
-                        case 0x000C/* constant-expression 上边状态检测*/:
-                            /* code */
-                            if (reg_num == 1/* condition */)
-                            {
-                                return 1;
-                                /* code */
-                            }
-                            break;
-                        case 0x000D/* constant-expression 下边状态检测*/:
-                            /* code */
-                            if (reg_num == 1/* condition */)
-                            {
-                                return 2;
-                                /* code */
-                            }
-                            break;
-                        case 0x000E/* constant-expression 左边状态检测*/:
-                            /* code */
-                            if (reg_num == 1/* condition */)
-                            {
-                                return 3;
-                                /* code */
-                            }
-                            break;
-                        case 0x000F/* constant-expression右边状态检测 */:
-                            /* code */
-                            if (reg_num == 1/* condition */)
-                            {
-                                return 4;
-                                /* code */
-                            }
-                            break;
-                        case 0x0010:    //柱状态检测
-                            if (reg_num == 1/* condition */)
-                            {
-                                return 5;
-                                /* code */
-                            }
-                            break;
-                        case 0x0011:    //雾状态检测
-                            if (reg_num == 1/* condition */)
-                            {
-                                return 6;
-                                /* code */
-                            }
-                            break;
-                        default:
-                            break;
-                        }
-
-                    }
+                    linebuf[linebuf_len++] = c;
+                }
+            }
+            else if (linebuf_len == 1)
+            {
+                if(c == 3)       //确定是读出的指令
+                {
+                    linebuf[linebuf_len++] = c;
                 }
 
-                // clear buffer
-                linebuf_len = 0;
             }
+            else if (linebuf_len == 2)
+            {
+                if (c == 4)     //读出4个字符
+                {
+                    linebuf[linebuf_len++] = c;
+                    stat = 1;  //开始接受剩下的数据
+                    len_date = 6;
+                }
+            }
+            else if (stat == 1 && len_date > 0)
+            {
+                len_date--;
+                linebuf[linebuf_len++] = c;
+                if (len_date == 0)
+                {
+                    stat = 2;
+                }
+            }
+            else if (stat == 2)
+            {
+                if (linebuf_len == FRAME_LENGTH)
+                {
+                    uint16_t crc = CRC.Funct_CRC16(linebuf, FRAME_LENGTH - 2);
+                    if (crc == ((linebuf[FRAME_LENGTH-2]) | linebuf[FRAME_LENGTH - 1] << 8))
+                    {
+                        Up_Down_pulse = -((linebuf[3] << 8) | linebuf[4]);
+                        Left_Right_pulse = ((linebuf[5] << 8) | linebuf[6]);
+                        // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的脉冲值为:%d", Left_Right_pulse);
+                        // gcs().send_text(MAV_SEVERITY_CRITICAL, "上下的脉冲值为:%d", Up_Down_pulse);
+
+                    }
+                    linebuf_len = 0;
+                    stat = 0;
+                }
+            }
+            else
+            {
+                linebuf_len = 0;
+                stat = 0;
+            }
+            // hal.serial(1)->write(c);
         }
+
     }
-    return 0;
+ 
+        return 0;
 }
 
 void FireFight::up_button(uint16_t val)
@@ -262,50 +260,20 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
     // RC_Channel &_rc = rc();
     // uint64_t start = AP_HAL::micros64();
     static uint16_t time_samp = 0;            //每个执行周期只能发送一条信息
-    // static uint8_t up_down = 0;
-    // static uint8_t left_right = 0;
+    static int8_t up_down = 0, up_down_last = 88;
+    static int8_t left_right = 0, left_right_last = 88;
+    static int16_t aim_Left_Right_pulse = 0, aim_record_Up_Down_pulse = 0;
+    static uint16_t record_delay = 0,aim_delay = 0,current_delay = 0;
     // static uint8_t wu_zhu = 0;
     // static uint8_t record_move = 0;
     uint16_t under_offset = 1550;
     uint16_t low_offset = 1450;
     // uint8_t temp;
 
-    static uint8_t time_cnt_up = 0,time_cnt_left = 0,time_cnt_zhu = 0,time_cnt_record = 0;
+    static uint8_t time_cnt_up = 0,time_cnt_left = 0,time_cnt_zhu = 0;//,time_cnt_record = 0;
 
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"rcin(9):%d",hal.rcin->read(9));
-    // temp = check_send_one(0x01);   //读取消防炮的返回值
-    // if ( temp!= 0)
-    // {
-    //     switch (temp)
-    //     {
-    //     case 1/* constant-expression */:
-    //         /* code */
-    //         up_down = 1;
-    //         break;
-    //     case 2/* constant-expression */:
-    //         /* code */
-    //         up_down = 2;
-    //         break;
-    //     case 3/* constant-expression */:
-    //         /* code */
-    //         left_right = 1;
-    //         break;
-    //     case 4/* constant-expression */:
-    //         /* code */
-    //         left_right = 2;
-    //         break;
-    //     case 5/* constant-expression */:
-    //         /* code */
-    //         wu_zhu = 1;
-    //         break;
-    //     case 6/* constant-expression */:
-    //         /* code */
-    //         wu_zhu = 2;
-    //         break;
-    //     default:
-    //         break;
-    //     }
-    // }
+
     if (time_samp <= DT_ms)  //第一个周期
     {
         if ((hal.rcin->read(2)) > under_offset)
@@ -324,6 +292,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
                 /* code */
                 up_button(1);
                 time_cnt_up = 0;
+                up_down = 1;   //表示当前正在向上
             }
             // write_two(0x01,0x000C,1,0);
         }
@@ -340,6 +309,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
                 /* code */
                 down_button(1);
                 time_cnt_up = 0;
+                up_down = -1;  //表示正在向下
             }
 
             // firefight_rover.up_button(0);
@@ -348,7 +318,10 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
         }
         else if( ((hal.rcin->read(2)) > low_offset) && ((hal.rcin->read(2)) < under_offset))   //重复发送4次
         {
-            if (/* condition */time_cnt_up == 0)
+
+            up_down = 0;
+
+            if (/* condition */ time_cnt_up == 0)
             {
                up_button(0);     //将柱清零            /* code */
             }
@@ -471,61 +444,86 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
 
         }
     }
-    else if(time_samp <= 7*DT_ms)
+    else if (time_samp <= 6 * DT_ms)
     {
-       if ((hal.rcin->read(5)) > under_offset)
-        {
-            if (/* condition */time_cnt_record == 0)
-            {
-                Record_button(0);    //将雾清零             /* code */
-            }
-            time_cnt_record++;
-            if (time_cnt_record >= 2 ) //延时一个执行周期
-            {
-                /* code */
-                playback_button(1);
-                time_cnt_record = 0;
-            }
-            // write_two(0x01,0x0010,1,0);
-        }
-        else if((hal.rcin->read(5)) < low_offset)
-        {
-            if (/* condition */time_cnt_record == 0)
-            {
-                playback_button(0); //将柱清零            /* code */
-            }
-            time_cnt_record++;
-            if (time_cnt_record >= 2 ) //延时一个执行周期
-            {
-                /* code */
-                Record_button(1);
-                time_cnt_record = 0;
+        read_one(1, 25, 2);    //发送读取脉冲数值命令
+        check_send_one(0x01);  //串口接收返回脉冲数值
+    }
 
-            }
-            // write_two(0x01,0x0010,0,1);
-        }
-    
-        else if(((hal.rcin->read(5)) > low_offset) && ((hal.rcin->read(5)) < under_offset))
+
+    if ((hal.rcin->read(5)) > under_offset)   //表示正在录制动作
+    {
+        record_delay++;                                                                         // 记录时间
+        if ((left_right != 0 || up_down != 0) && (up_down_last == 88 && left_right_last == 88)) // 有动作时开始记录
         {
-            if (/* condition */time_cnt_record == 0)
+            record_delay = 0;
+            current_delay = 0;
+            aim_delay = 0;
+            up_down_last = up_down;
+            left_right_last = left_right;
+            num_actions = 0;
+            // record_Left_Right_pulse = Left_Right_pulse;  //记录初始数值
+            // record_Up_Down_pulse =  Up_Down_pulse;
+            actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
+        }
+
+        if (num_actions < MAX_ACTIONS)   //若指令满了，则停止记录
+        {
+            if ((up_down_last != 88 && left_right_last != 88)) // 过了初始化才能进入记录
             {
-                playback_button(0);  //将柱清零            /* code */
+                if (up_down != up_down_last || left_right != left_right_last) // 当动作发生改变时，记录当前电机脉冲数值
+                {
+                    actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
+                    up_down_last = up_down;
+                    left_right_last = left_right;
+                }
             }
-            time_cnt_record++;
-            if (time_cnt_record >= 2 ) //延时一个执行周期
+        }
+
+    }
+    else if((hal.rcin->read(5)) < low_offset)
+    {
+        if (action_index == 0)  //当执行第一次动作时，需要进行归位
+        {
+            aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
+            aim_record_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
+            aim_delay = actions[action_index].record_delay;
+            action_index++;
+        }
+        else if ( (abs(Left_Right_pulse - aim_Left_Right_pulse) < 10 && abs(Up_Down_pulse - aim_record_Up_Down_pulse) < 10))
+        {
+            if ((current_delay >= aim_delay))
             {
-                /* code */
-                
-                Record_button(0);
-                time_cnt_record = 0;
-                // wu_zhu++;
+                if (action_index < num_actions)
+                {
+                    aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
+                    aim_record_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
+                    aim_delay = actions[action_index].record_delay;
+                    action_index++;
+                }
+                else
+                {
+                    action_index = 0; // 重复动作
+                    current_delay = 0;
+                    aim_delay = 0;
+                }
             }
+            current_delay++;
+        }
+
+    }
+
+    else if(((hal.rcin->read(5)) > low_offset) && ((hal.rcin->read(5)) < under_offset))
+    {
+        up_down_last = 88;
+        left_right_last = 88;
+        aim_Left_Right_pulse = Left_Right_pulse;
+        aim_record_Up_Down_pulse = Up_Down_pulse;
         // write_two(0x01,0x0010,0,0);
 
-        }        
     }
     time_samp += DT_ms;
-    if(time_samp == 8*DT_ms)
+    if(time_samp == 7*DT_ms)
     {
         time_samp = 0;
     }

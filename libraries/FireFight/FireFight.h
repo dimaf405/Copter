@@ -45,6 +45,7 @@ public:
     void pump_button(uint16_t val);    //泵按钮
     void Record_button(uint16_t val);  //录制按钮
     void playback_button(uint16_t val);//回放按钮
+    int16_t Left_Right_pulse, Up_Down_pulse;
 };
 
 #endif
