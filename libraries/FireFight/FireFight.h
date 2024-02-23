@@ -46,6 +46,8 @@ public:
     void Record_button(uint16_t val);  //录制按钮
     void playback_button(uint16_t val);//回放按钮
     int16_t Left_Right_pulse, Up_Down_pulse;
+    uint16_t Set_Left_motor, Read_Left_motor;
+    uint16_t Set_Right_motor, Read_Right_motor;
 };
 
 #endif

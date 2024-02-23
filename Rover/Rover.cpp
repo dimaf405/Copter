@@ -73,7 +73,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(read_radio,             50,    200,   3),
     SCHED_TASK(ahrs_update,           400,    400,   6),
     SCHED_TASK(read_rangefinders,      50,    200,   9),
-    SCHED_TASK(FireFight_open,        500,    400,  11),
+    SCHED_TASK(FireFight_open,        1000,    800,  11),
     // SCHED_TASK(Fire_motor,             50,    200,  10),
 
      SCHED_TASK(Fire_CLED,             50,    200,  13),
@@ -155,18 +155,23 @@ void Rover::FireFight_open()   //每20毫秒执行一次
 {
     uint8_t static stat = 0;
 
-    if(hal.rcin->read(6) > 1800)
+    if (hal.rcin->read(6) > 1800) //&& current_v > 40)
     {
         if(stat == 0)
         {
-            firefight_rover.function_fire_fight(2);
+            firefight_rover.function_fire_fight(3);
         }
         if(stat==1)
         {
-            fire_motor_rover.function_fire_motor_485(2);
+            fire_motor_rover.function_fire_motor_485(3);
+        }
+        if (stat == 2)
+        {
+            firefight_rover.read_one(1, 25, 2); // 发送读取脉冲数值命令
+            firefight_rover.check_send_one(0x01); // 串口接收返回脉冲数值
         }
         stat++;
-        if(stat >= 2)
+        if(stat >= 3)
         {
             stat = 0;
         }
@@ -174,18 +179,18 @@ void Rover::FireFight_open()   //每20毫秒执行一次
     else
     {   if(stat == 0)
             firefight_rover.up_button(0);
-        if(stat == 1)    
-        firefight_rover.down_button(0);
-        if(stat == 2)
-        firefight_rover.left_button(0);
-        if(stat == 3)
-        firefight_rover.right_button(0);
-        if(stat == 4)
-        firefight_rover.write_two(100,0x2000,6,0);
-        if(stat == 5)
-        firefight_rover.write_two(101,0x2000,6,0);
-        if(stat == 6)
-             stat = 0;
+        else if(stat == 1)    
+            firefight_rover.down_button(0);
+        else if(stat == 2)
+            firefight_rover.left_button(0);
+        else if(stat == 3)
+            firefight_rover.right_button(0);
+        else if(stat == 4)
+            firefight_rover.write_two(100, 0x2000, 6, 0);
+        else if(stat == 5)
+            firefight_rover.write_two(101, 0x2000, 6, 0);
+        else 
+            stat = 0;
         stat++;        
     }
     // firefight_rover.read_one(1,25,2);
@@ -214,9 +219,8 @@ void Rover::Fire_motor()       //
 
 void Rover::Fire_CLED()
 {
-    float v = battery.gcs_voltage(0);
-    fire_led.Fire_Power_LED(v,20);
-    
+    current_v = battery.gcs_voltage(0);
+    fire_led.Fire_Power_LED(current_v, 20);
 }
 
 void Rover::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,

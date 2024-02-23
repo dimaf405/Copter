@@ -73,6 +73,11 @@ void Fire_motor_485::drive_error(uint8_t addressID)                 //故障代�
     FF.read_one(addressID,0x2102,0x0001);
 }
 
+void Fire_motor_485::read_RPM(uint8_t addressID)
+{
+    FF.read_one(addressID, 0x3005, 0x0002);                          //读取电机输出设定转速和输出转速
+}
+
 void Fire_motor_485::update_status()
 {
     read_drive1_status(Left_motor);
@@ -100,10 +105,11 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     // static uint8_t L_cnt=0,R_cnt=0;
     // static int16_t last_V_R  = 0;
     // static int16_t last_V_L  = 0;
+
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"按键标志位:%d",abs(rcin_9 - last_rcin_9));
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"rcin_1标志位:%d",abs(rcin_1 - mid_offset));
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"rcin_0志位:%d",abs(rcin_0 - mid_offset));
-    if((abs(rcin_1 - mid_offset) >100) || (abs(rcin_0 - mid_offset) >100))
+    if((abs(rcin_1 - mid_offset) >50) || (abs(rcin_0 - mid_offset) >50))
     {
         y = (rcin_1 - mid_offset)*vc;
         x = (rcin_0 - mid_offset)*w;
@@ -127,68 +133,11 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
         stop_button = ~stop_button;//相当于按键被按下
     }
     last_rcin_9 = rcin_9; 
-    // if(rcin_1 > under_offset && rcin_0 > under_offset)  //表示在第一象限
-    // {
-    //     y = rcin_1 - mid_offset;
-    //     x = rcin_0 - mid_offset;
-    //     V_L = -y * x_x;                                    //转换成PWM
-    //     V_R = -(y + x/450*y*0.5)*x_x;
-    // }
-    // else if(rcin_1 > under_offset && rcin_0 < low_offset)  //表示在第二象限
-    // {
-    //     y = rcin_1 - mid_offset;
-    //     x = rcin_0 - mid_offset;
-    //     V_L = -(y - x/450*y*0.5)*x_x;                               //转换成PWM
-    //     V_R = -y * x_x;     
-    // }
-    // else if(rcin_1 < low_offset && rcin_0 < low_offset)  //表示在第三象限
-    // {
-    //     y = rcin_1 - mid_offset;
-    //     x = rcin_0 - mid_offset;
-    //     V_L = -(y - x/450*y*0.5)*x_x;                               //转换成PWM
-    //     V_R = -y * x_x;     
-    // }    
-    // else if(rcin_1 < low_offset && rcin_0 > under_offset)  //第四象限
-    // {
-    //     y = rcin_1 - mid_offset;
-    //     x = rcin_0 - mid_offset;
-    //     V_L = -y * x_x;                            
-    //             //转换成PWM
-    //     V_R = -(y + x/450*y*0.5)*x_x;
-    // }
-    // else if(rcin_1 > under_offset && (abs(rcin_0 - mid_offset) <100))  //直线前进 
-    // {
-    //     y = rcin_1 - mid_offset;
-    //     V_L = -y * x_x;                                    //转换成PWM
-    //     V_R = -y * x_x; 
-    // }
-    // else if(rcin_1 < low_offset && (abs(rcin_0 - mid_offset) <100))  //直线后退
-    // {
-    //     y = rcin_1 - mid_offset;
-    //     V_L = -y * x_x;                                    //转换成PWM
-    //     V_R = -y * x_x; 
-    // }
-    // else if(rcin_0 < low_offset && (abs(rcin_1 - mid_offset) <100))  //原地逆时间
-    // {
-    //     x = rcin_0 - mid_offset;
-    //     V_L = x * x_x;                                    //转换成PWM
-    //     V_R =-x * x_x; 
-    // }
-    // else if(rcin_0 > under_offset && (abs(rcin_1 - mid_offset) <100))  //原地顺时间 
-    // {
-    //     x = rcin_0 - mid_offset;
-    //     V_L = x * x_x;                                    //转换成PWM
-    //     V_R =-x * x_x; 
-    // }   
-    // else if (stop_button || ((abs(rcin_1 - mid_offset) <100 && abs(rcin_0 - mid_offset) <100))/* condition */)
-    // {
-    //     /* code */
-    //     V_L = 0;                                    //转换成PWM
-    //     V_R = 0; 
-    // }
+
     V_L = LIMIT(V_L,-2950,2950);   //输出限幅
     V_R = LIMIT(V_R,-2950,2950);
-    
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "右期望值为:%d", (int16_t)V_R);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
     if( golab_cnt == 0)  //如果更新数值没有改变，则见不输出V_L != last_V_L &&
     {
         // V_L = -V_L;
@@ -201,7 +150,7 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
         else if(V_L < -5)
         {
 
-            FF.write_two(Left_motor,0X2000,1,(uint16_t)-V_L); //左边轮子正转
+            FF.write_two(Left_motor, 0X2000, 1, (uint16_t)(-V_L)); // 左边轮子正转
         }
         else if(abs(V_L) < 5)
         {
@@ -221,7 +170,7 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     }
 
     
-    if(golab_cnt == 1)  //如果更新数值没有改变，则见不输出V_R != last_V_R 
+    else if(golab_cnt == 1)  //如果更新数值没有改变，则见不输出V_R != last_V_R 
     {
         V_R = -V_R;
         if (V_R > 5)
@@ -232,7 +181,7 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
         else if(V_R < -5)
         {
  
-            FF.write_two(Right_motor,0X2000,1,(uint16_t)-V_R); 
+            FF.write_two(Right_motor,0X2000,1,(uint16_t)(-V_R)); 
         }
         else if(abs(V_R) < 5)
         { 
@@ -247,19 +196,27 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
 
         }
         // last_V_R = V_R;
-        golab_cnt = 2;
+    }
+    else if (golab_cnt == 2)
+    {
+        read_RPM(100);
+    }
+    else if (golab_cnt == 3)
+    {
+        read_RPM(101);
     }
 
-    if (golab_cnt == 2/* condition */)
+    golab_cnt++;
+
+    if (golab_cnt == 4 /* condition */)
     {
         golab_cnt = 0;
         /* code */
     }
-    else if (golab_cnt == 0/* condition */)
-    {
-        golab_cnt++;
+
+    
         /* code */
-    }
+ 
     
     
 

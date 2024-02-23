@@ -28,13 +28,12 @@ private:
     void read_drive1_status(uint8_t addressID);           //驱动器状态字1
     void read_drive2_status(uint8_t addressID);           //驱动器状态字2
     void drive_error(uint8_t addressID);                  //故障驱动代码
-    /* data */
-public: /*addressID为控制板的485ID，不是功能地址*/
-    /*下面为动态调整参数*/
+    void read_RPM(uint8_t addressID);                     //读取电机输出转速      
+        /* data */
+    public : /*addressID为控制板的485ID，不是功能地址*/
+                /*下面为动态调整参数*/
 
-    void function_fire_motor_485(uint8_t DT_ms);
-    
-
+                void function_fire_motor_485(uint8_t DT_ms);
 };
 
 

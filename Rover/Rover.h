@@ -129,6 +129,7 @@ private:
     Fire_motor_485 fire_motor_rover;
     FireFight firefight_rover;
     Fire_LED fire_led;
+    float current_v = 50;   //读取当前电压值
     // all settable parameters
     Parameters g;
     ParametersG2 g2;

@@ -20,6 +20,8 @@ PB9 LED_BOOTLOADER OUTPUT LOW
 #PA14 LED_ACTIVITY  OUTPUT LOW
 define HAL_LED_ON 0
 
+PC6 POWER_LED OUTPUT HIGHT GPIO(2)
+
 # the location where the bootloader will put the firmware
 FLASH_BOOTLOADER_LOAD_KB 64
 
