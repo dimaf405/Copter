@@ -73,7 +73,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(read_radio,             50,    200,   3),
     SCHED_TASK(ahrs_update,           400,    400,   6),
     SCHED_TASK(read_rangefinders,      50,    200,   9),
-    SCHED_TASK(FireFight_open,        1000,    800,  11),
+    SCHED_TASK(FireFight_open,        500,    400,  11),
     // SCHED_TASK(Fire_motor,             50,    200,  10),
 
      SCHED_TASK(Fire_CLED,             50,    200,  13),
@@ -159,11 +159,11 @@ void Rover::FireFight_open()   //每20毫秒执行一次
     {
         if(stat == 0)
         {
-            firefight_rover.function_fire_fight(3);
+            firefight_rover.function_fire_fight(6);
         }
         if(stat==1)
         {
-            fire_motor_rover.function_fire_motor_485(3);
+            fire_motor_rover.function_fire_motor_485(6);
         }
         if (stat == 2)
         {
