@@ -175,6 +175,7 @@ uint8_t FireFight::check_send_one(uint8_t addressID)
                         {
                             Set_Right_motor = ((linebuf[3] << 8) | linebuf[4]);
                             Read_Right_motor = ((linebuf[5] << 8) | linebuf[6]);
+                            // gcs().send_text(MAV_SEVERITY_CRITICAL, "Read_Right_motor:%d", (int16_t)Read_Right_motor);
                         }
 
                         // gcs().send_text(MAV_SEVERITY_CRITICAL, "上下的脉冲值为:%d", Up_Down_pulse);
@@ -346,8 +347,8 @@ void FireFight::function_fire_fight(uint8_t DT_ms)   //执行周期，传入DT�
         // aim_Left_Right_pulse = Left_Right_pulse;
     }
 
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "上下的脉冲值为:%d", Up_Down_pulse);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的脉冲值为:%d", Left_Right_pulse);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的期望值为:%d", aim_Left_Right_pulse);

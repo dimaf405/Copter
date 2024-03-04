@@ -76,6 +76,7 @@ void Fire_motor_485::drive_error(uint8_t addressID)                 //故障代�
 void Fire_motor_485::read_RPM(uint8_t addressID)
 {
     FF.read_one(addressID, 0x3005, 0x0002);                          //读取电机输出设定转速和输出转速
+    // FF.read_one(addressID, 0X0914, 0x0002);
 }
 
 void Fire_motor_485::update_status()
@@ -137,7 +138,8 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     V_L = LIMIT(V_L,-2950,2950);   //输出限幅
     V_R = LIMIT(V_R,-2950,2950);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "右期望值为:%d", (int16_t)V_R);
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
     if( golab_cnt == 0)  //如果更新数值没有改变，则见不输出V_L != last_V_L &&
     {
         // V_L = -V_L;

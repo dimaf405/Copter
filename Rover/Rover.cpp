@@ -73,7 +73,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(read_radio,             50,    200,   3),
     SCHED_TASK(ahrs_update,           400,    400,   6),
     SCHED_TASK(read_rangefinders,      50,    200,   9),
-    SCHED_TASK(FireFight_open,        500,    400,  11),
+    SCHED_TASK(FireFight_open,        100,    400,  11),
     // SCHED_TASK(Fire_motor,             50,    200,  10),
 
      SCHED_TASK(Fire_CLED,             50,    200,  13),
