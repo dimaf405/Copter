@@ -45,6 +45,10 @@
 #include <AC_PrecLand/AC_PrecLand_config.h>
 #include <AP_Follow/AP_Follow_config.h>
 #include <AP_ExternalControl/AP_ExternalControl_config.h>
+#include <FireFight/FireFight.h>                    //添加消防炮头文件
+#include <Fire_motor_485/Fire_motor_485.h>          //添加电机驱动头文件
+#include <Fire_LED/Fire_LED.h>                      //添加灯的头文件
+
 #if AP_EXTERNAL_CONTROL_ENABLED
 #include "AP_ExternalControl_Rover.h"
 #endif
@@ -90,6 +94,7 @@ public:
     friend class GCS_Rover;
     friend class Mode;
     friend class ModeAcro;
+    friend class ModeTest;      //增加自定义模式
     friend class ModeAuto;
     friend class ModeCircle;
     friend class ModeGuided;
@@ -121,6 +126,10 @@ private:
     // variables
     AP_Param param_loader;
 
+    Fire_motor_485 fire_motor_rover;
+    FireFight firefight_rover;
+    Fire_LED fire_led;
+    float current_v = 50;   //读取当前电压值
     // all settable parameters
     Parameters g;
     ParametersG2 g2;
@@ -135,8 +144,11 @@ private:
     RC_Channel *channel_roll;
     RC_Channel *channel_pitch;
     RC_Channel *channel_walking_height;
+    // RC_Channel rc;      //读取RC数值
 
+#if HAL_LOGGING_ENABLED
     AP_Logger logger;
+#endif
 
     // flight modes convenience array
     AP_Int8 *modes;
@@ -226,7 +238,9 @@ private:
     static const AP_Scheduler::Task scheduler_tasks[];
 
     static const AP_Param::Info var_info[];
+#if HAL_LOGGING_ENABLED
     static const LogStructure log_structure[];
+#endif
 
     // time that rudder/steering arming has been running
     uint32_t rudder_arm_timer;
@@ -245,6 +259,7 @@ private:
     ModeHold mode_hold;
     ModeManual mode_manual;
     ModeAcro mode_acro;
+    ModeTest mode_test;                 //增加自定义模式
     ModeGuided mode_guided;
     ModeAuto mode_auto;
     ModeLoiter mode_loiter;
@@ -293,8 +308,8 @@ private:
     void update_current_mode(void);
 
     // balance_bot.cpp
-    void balancebot_pitch_control(float &throttle);
-    bool is_balancebot() const;
+    void balance_pitch_control(float &throttle);
+    bool is_balance() const;
 
     // commands.cpp
     bool set_home_to_current_location(bool lock) WARN_IF_UNUSED;
@@ -304,6 +319,11 @@ private:
     // crash_check.cpp
     void crash_check();
 
+    void FireFight_open();    //消防炮对应函数
+
+    void Fire_motor();        //消防车电机驱动
+
+    void Fire_CLED();
     // cruise_learn.cpp
     void cruise_learn_start();
     void cruise_learn_update();

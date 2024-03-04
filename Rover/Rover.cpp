@@ -73,6 +73,13 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(read_radio,             50,    200,   3),
     SCHED_TASK(ahrs_update,           400,    400,   6),
     SCHED_TASK(read_rangefinders,      50,    200,   9),
+    SCHED_TASK(FireFight_open,        100,    400,  11),
+    // SCHED_TASK(Fire_motor,             50,    200,  10),
+
+     SCHED_TASK(Fire_CLED,             50,    200,  13),
+        
+        
+
 #if AP_OPTICALFLOW_ENABLED
     SCHED_TASK_CLASS(AP_OpticalFlow,      &rover.optflow,          update,         200, 160,  11),
 #endif
@@ -89,8 +96,10 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_WindVane,         &rover.g2.windvane,      update,         20,  100,  30),
     SCHED_TASK(update_wheel_encoder,   50,    200,  36),
     SCHED_TASK(update_compass,         10,    200,  39),
+#if HAL_LOGGING_ENABLED
     SCHED_TASK(update_logging1,        10,    200,  45),
     SCHED_TASK(update_logging2,        10,    200,  48),
+#endif
     SCHED_TASK_CLASS(GCS,                 (GCS*)&rover._gcs,       update_receive,                    400,    500,  51),
     SCHED_TASK_CLASS(GCS,                 (GCS*)&rover._gcs,       update_send,                       400,   1000,  54),
     SCHED_TASK_CLASS(RC_Channels,         (RC_Channels*)&rover.g2.rc_channels, read_mode_switch,        7,    200,  57),
@@ -123,11 +132,13 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AC_Sprayer,          &rover.g2.sprayer,       update,          3,  90,  99),
 #endif
     SCHED_TASK(compass_save,            0.1,  200, 105),
-#if LOGGING_ENABLED == ENABLED
+#if HAL_LOGGING_ENABLED
     SCHED_TASK_CLASS(AP_Logger,           &rover.logger,           periodic_tasks, 50,  300, 108),
 #endif
     SCHED_TASK_CLASS(AP_InertialSensor,   &rover.ins,              periodic,      400,  200, 111),
+#if HAL_LOGGING_ENABLED
     SCHED_TASK_CLASS(AP_Scheduler,        &rover.scheduler,        update_logging, 0.1, 200, 114),
+#endif
 #if HAL_BUTTON_ENABLED
     SCHED_TASK_CLASS(AP_Button,           &rover.button,           update,          5,  200, 117),
 #endif
@@ -140,7 +151,77 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(afs_fs_check,           10,    200, 129),
 #endif
 };
+void Rover::FireFight_open()   //每20毫秒执行一次
+{
+    uint8_t static stat = 0;
 
+    if (hal.rcin->read(6) > 1800) //&& current_v > 40)
+    {
+        if(stat == 0)
+        {
+            firefight_rover.function_fire_fight(6);
+        }
+        if(stat==1)
+        {
+            fire_motor_rover.function_fire_motor_485(6);
+        }
+        if (stat == 2)
+        {
+            firefight_rover.read_one(1, 25, 2); // 发送读取脉冲数值命令
+            firefight_rover.check_send_one(0x01); // 串口接收返回脉冲数值
+        }
+        stat++;
+        if(stat >= 3)
+        {
+            stat = 0;
+        }
+    }
+    else
+    {   if(stat == 0)
+            firefight_rover.up_button(0);
+        else if(stat == 1)    
+            firefight_rover.down_button(0);
+        else if(stat == 2)
+            firefight_rover.left_button(0);
+        else if(stat == 3)
+            firefight_rover.right_button(0);
+        else if(stat == 4)
+            firefight_rover.write_two(100, 0x2000, 6, 0);
+        else if(stat == 5)
+            firefight_rover.write_two(101, 0x2000, 6, 0);
+        else 
+            stat = 0;
+        stat++;        
+    }
+    // firefight_rover.read_one(1,25,2);
+    // firefight_rover.check_send_one(0x01);
+}
+
+void Rover::Fire_motor()       //
+{
+    ;
+    //这个是测试
+    // gcs().send_text(MAV_SEVERITY_CRITICAL,  //地面站消息发送
+    //     "现在是延迟5s测试:%0.2f",v);
+    // uint16_t ms = 10000; 
+    // static uint64_t start = AP_HAL::millis64();
+    // if ((AP_HAL::millis64() - start)/1000 > ms)
+    // {
+    // hal.scheduler->delay(2000);  //5s
+    // gcs().send_text(MAV_SEVERITY_CRITICAL,  //地面站消息发送
+    //         "现在是延迟5s测试");
+        // start = AP_HAL::millis64();
+    // }
+//   fire_motor_rover.function_fire_motor_485(20);
+ //这个是测试
+;
+}
+
+void Rover::Fire_CLED()
+{
+    current_v = battery.gcs_voltage(0);
+    fire_led.Fire_Power_LED(current_v, 20);
+}
 
 void Rover::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
                                 uint8_t &task_count,
@@ -156,7 +237,9 @@ constexpr int8_t Rover::_failsafe_priorities[7];
 Rover::Rover(void) :
     AP_Vehicle(),
     param_loader(var_info),
+#if HAL_LOGGING_ENABLED
     logger{g.log_bitmask},
+#endif
     modes(&g.mode1),
     control_mode(&mode_initializing)
 {
@@ -336,6 +419,7 @@ void Rover::ahrs_update()
         ground_speed = ahrs.groundspeed();
     }
 
+#if HAL_LOGGING_ENABLED
     if (should_log(MASK_LOG_ATTITUDE_FAST)) {
         Log_Write_Attitude();
         Log_Write_Sail();
@@ -348,6 +432,7 @@ void Rover::ahrs_update()
     if (should_log(MASK_LOG_VIDEO_STABILISATION)) {
         ahrs.write_video_stabilisation();
     }
+#endif
 }
 
 /*
@@ -376,6 +461,7 @@ void Rover::gcs_failsafe_check(void)
     failsafe_trigger(FAILSAFE_EVENT_GCS, "GCS", do_failsafe);
 }
 
+#if HAL_LOGGING_ENABLED
 /*
   log some key data - 10Hz
  */
@@ -435,7 +521,7 @@ void Rover::update_logging2(void)
     }
 #endif
 }
-
+#endif  // HAL_LOGGING_ENABLED
 
 /*
   once a second events

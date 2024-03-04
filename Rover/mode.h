@@ -14,6 +14,7 @@ public:
     enum class Number : uint8_t {
         MANUAL       = 0,
         ACRO         = 1,
+        TEST    = 2, //增加test_mode作测试用
         STEERING     = 3,
         HOLD         = 4,
         LOITER       = 5,
@@ -26,6 +27,7 @@ public:
         AUTO         = 10,
         RTL          = 11,
         SMART_RTL    = 12,
+
         GUIDED       = 15,
         INITIALISING = 16,
     };
@@ -233,6 +235,50 @@ public:
 
     // sailboats in acro mode support user manually initiating tacking from transmitter
     void handle_tack_request() override;
+};
+
+class ModeTest : public Mode
+{
+public:
+
+    Number mode_number() const override { return Number::TEST; }   //这个数值必须要根最上面的枚举一样
+    const char *name4() const override { return "TEST"; }
+
+    // methods that affect movement of the vehicle in this mode
+    void update() override;
+
+    // Number mode_number() const override { return Number::HOLD; }
+    // const char *name4() const override { return "HOLD"; }
+
+    // // methods that affect movement of the vehicle in this mode
+    // void update() override;
+
+    // // attributes for mavlink system status reporting
+    // bool attitude_stabilized() const override { return false; }
+
+    // // hold mode does not require position or velocity estimate
+    // bool requires_position() const override { return false; }
+    // bool requires_velocity() const override { return false; }
+    // return if in non-manual mode : AUTO, GUIDED, RTL
+    // virtual bool is_autopilot_mode() const { return false; }
+
+    // // returns true if steering is directly controlled by RC
+    // virtual bool manual_steering() const { return false; }
+
+    // // returns true if the throttle is controlled automatically
+    // virtual bool auto_throttle() { return is_autopilot_mode(); }
+
+
+
+    // // attributes for mavlink system status reporting
+    // bool has_manual_input() const override { return true; }
+
+    // // acro mode requires a velocity estimate for non skid-steer rovers
+    // bool requires_position() const override { return false; }
+    // bool requires_velocity() const override;
+
+    // // sailboats in acro mode support user manually initiating tacking from transmitter
+    // void handle_tack_request() override;
 };
 
 
