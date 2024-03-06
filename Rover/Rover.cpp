@@ -144,15 +144,20 @@ void Rover::FireFight_open() // 每20毫秒执行一次
 {
     uint8_t static stat = 0;
 
-    if (hal.rcin->read(6) > 1800)
+    if (hal.rcin->read(6) > 1800) //&& current_v > 40)
     {
         if (stat == 0)
         {
-            firefight_rover.function_fire_fight(5);
+            firefight_rover.function_fire_fight(6);
         }
-        if (stat == 1)
+        // if (stat == 1)
+        // {
+        //     fire_motor_rover.function_fire_motor_485(6);
+        // }
+        else if (stat == 1)
         {
-            fire_motor_rover.function_fire_motor_485(5);
+            firefight_rover.read_one(1, 25, 2);   // 发送读取脉冲数值命令
+            firefight_rover.check_send_one(0x01); // 串口接收返回脉冲数值
         }
         stat++;
         if (stat >= 2)
@@ -164,17 +169,17 @@ void Rover::FireFight_open() // 每20毫秒执行一次
     {
         if (stat == 0)
             firefight_rover.up_button(0);
-        if (stat == 1)
+        else if (stat == 1)
             firefight_rover.down_button(0);
-        if (stat == 2)
+        else if (stat == 2)
             firefight_rover.left_button(0);
-        if (stat == 3)
+        else if (stat == 3)
             firefight_rover.right_button(0);
-        if (stat == 4)
+        else if (stat == 4)
             firefight_rover.write_two(100, 0x2000, 6, 0);
-        if (stat == 5)
+        else if (stat == 5)
             firefight_rover.write_two(101, 0x2000, 6, 0);
-        if (stat == 6)
+        else
             stat = 0;
         stat++;
     }

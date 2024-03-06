@@ -2,13 +2,14 @@
 #ifndef _FIRE_MOTOR_485_H_
 #define _FIRE_MOTOR_485_H_
 #include <FireFight/FireFight.h>
-
+#include <FireFight/FireFightCRC.h>
 #define LIMIT( x,min,max ) ( ((x) <= (min)) ? (min) : ( ((x) > (max))? (max) : (x) ) )
 /*  本机波特率 19200
     本机485通道ID：0x02*/
 class Fire_motor_485
 {
 private:
+    FireFightCRC CRC;
     FireFight FF;
     void update_status();        //更新状态数值
     uint16_t Left_motor = 100;   //左电机驱动
@@ -28,12 +29,17 @@ private:
     void read_drive1_status(uint8_t addressID);           //驱动器状态字1
     void read_drive2_status(uint8_t addressID);           //驱动器状态字2
     void drive_error(uint8_t addressID);                  //故障驱动代码
-    void read_RPM(uint8_t addressID);                     //读取电机输出转速      
+    void read_RPM(uint8_t addressID);                     //读取电机输出转速
+ 
+    void read_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num);
+    void write_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num);
+    void write_two(uint8_t address_ID, uint16_t start_reg_adress, uint16_t val_1, uint16_t val_2);
         /* data */
-    public : /*addressID为控制板的485ID，不是功能地址*/
+public : /*addressID为控制板的485ID，不是功能地址*/
                 /*下面为动态调整参数*/
 
-                void function_fire_motor_485(uint8_t DT_ms);
+    void function_fire_motor_485(uint8_t DT_ms);
+    void motor_init(); // 电机初始化程序
 };
 
 
@@ -43,4 +49,3 @@ private:
 
 
 #endif
-

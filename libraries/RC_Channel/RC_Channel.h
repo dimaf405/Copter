@@ -358,7 +358,7 @@ protected:
     void do_aux_function_fft_notch_tune(const AuxSwitchPos ch_flag);
 
     typedef int8_t modeswitch_pos_t;
-    virtual void mode_switch_changed(modeswitch_pos_t new_pos) {
+    virtual void mode_switch_changed(modeswitch_pos_t ne_wpos) {
         // no action by default (e.g. Tracker, Sub, who do their own thing)
     };
 

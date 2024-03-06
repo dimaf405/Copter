@@ -6,77 +6,152 @@
 // {
 // }
 
+void Fire_motor_485::motor_init()
+{
+    hal.serial(2)->begin(19200); // 初始化串口程序
+
+    hal.scheduler->delay(100); // 等待初始化串口
+    write_one(100,0x2009,7);
+    hal.scheduler->delay(10); // 设置串口速度
+    write_one(101,0x2009,7);
+    hal.scheduler->delay(10); // 设置串口速度
+    hal.serial(2)->begin(115200); // 初始化串口程序
+    hal.serial(2)->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+    hal.serial(2)->set_unbuffered_writes(true);
+    write_two(100, 0x2003, 10, 5);
+    hal.scheduler->delay(10); // 设置电机加减速时间
+    write_two(101, 0x2003, 10, 5);
+    hal.scheduler->delay(10); // 等待初始化串口
+}
+
+void Fire_motor_485::read_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num) // 只需要填写寄存器ID和寄存器个数
+{
+    uint8_t data_to_send[10];
+    uint8_t cnt = 0;
+    uint16_t crc = 0;
+    data_to_send[cnt++] = address_ID; // 设备地址为01
+    data_to_send[cnt++] = 0x03;       // 读取的功能码为03
+    data_to_send[cnt++] = BYTE1(reg_adress);
+    data_to_send[cnt++] = BYTE0(reg_adress);
+    data_to_send[cnt++] = BYTE1(reg_num);
+    data_to_send[cnt++] = BYTE0(reg_num);
+    crc = CRC.Funct_CRC16(data_to_send, cnt); // 官方给的CRC校验
+    data_to_send[cnt++] = BYTE0(crc);
+    data_to_send[cnt++] = BYTE1(crc);
+    hal.serial(2)->write(data_to_send, cnt);
+}
+
+void Fire_motor_485::write_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num) // 只需要填写寄存器ID和寄存器个数
+{
+    uint8_t data_to_send[10];
+    uint8_t cnt = 0;
+    uint16_t crc = 0;
+    data_to_send[cnt++] = address_ID; // 设备地址为01
+    data_to_send[cnt++] = 0x06;       // 写入的功能码为06
+    data_to_send[cnt++] = BYTE1(reg_adress);
+    data_to_send[cnt++] = BYTE0(reg_adress);
+    data_to_send[cnt++] = BYTE1(reg_num);
+    data_to_send[cnt++] = BYTE0(reg_num);
+    crc = CRC.Funct_CRC16(data_to_send, cnt); // 官方给的CRC校验
+    data_to_send[cnt++] = BYTE0(crc);
+    data_to_send[cnt++] = BYTE1(crc);
+    hal.serial(2)->write(data_to_send, cnt);
+}
+
+void Fire_motor_485::write_two(uint8_t address_ID, uint16_t start_reg_adress, uint16_t val_1, uint16_t val_2) // 写两个寄存器，用于归零
+{
+    uint8_t data_to_send[15];
+    uint8_t cnt = 0;
+    uint16_t crc = 0;
+    uint16_t write_num = 0x0002;      // 怀疑写入地址错误，未验证，若验证清删除
+    data_to_send[cnt++] = address_ID; // 设备地址为01
+    data_to_send[cnt++] = 0x10;       // 写入的功能码为0x10
+    data_to_send[cnt++] = BYTE1(start_reg_adress);
+    data_to_send[cnt++] = BYTE0(start_reg_adress);
+    data_to_send[cnt++] = BYTE1(write_num); // 写入数量
+    data_to_send[cnt++] = BYTE0(write_num);
+    data_to_send[cnt++] = 0x04; // 写入字节数
+    data_to_send[cnt++] = BYTE1(val_1);
+    data_to_send[cnt++] = BYTE0(val_1);
+    data_to_send[cnt++] = BYTE1(val_2);
+    data_to_send[cnt++] = BYTE0(val_2);
+    crc = CRC.Funct_CRC16(data_to_send, cnt); // 官方给的CRC校验
+    data_to_send[cnt++] = BYTE0(crc);
+    data_to_send[cnt++] = BYTE1(crc);
+    hal.serial(2)->write(data_to_send, cnt);
+}
+
 void Fire_motor_485::change_address(uint8_t addressID,uint16_t val) //初始化需要进行设置
 {
-    // FF.read_one()
-    FF.write_one(0x01,0x2008,100);    //设定电机控制器ID为100和101,只有调试运行一次
-    // FF.write_one(0x2008,101);    //设定电机控制器ID为100和101,只有调试运行一次
+    // read_one()
+    write_one(0x01,0x2008,100);    //设定电机控制器ID为100和101,只有调试运行一次
+    // write_one(0x2008,101);    //设定电机控制器ID为100和101,只有调试运行一次
 }
 
 void Fire_motor_485::set_Forward(uint8_t addressID)
 {
-    FF.write_one(addressID,0x2000,0x0001);
+    write_one(addressID,0x2000,0x0001);
 }
 
 void Fire_motor_485::set_Reverse(uint8_t addressID)
 {
-    FF.write_one(addressID,0x2000,0x0002);
+    write_one(addressID,0x2000,0x0002);
 }
 
 void Fire_motor_485::shutdown(uint8_t addressID)                     //停机
 {
-    FF.write_one(addressID,0x2000,0x0005);
+    write_one(addressID,0x2000,0x0005);
 }
 
 void Fire_motor_485::free_stop(uint8_t addressID)                   //自由停机(紧急停机) 
 {
-    FF.write_one(addressID,0x2000,0x0006);
+    write_one(addressID,0x2000,0x0006);
 }
 
 void Fire_motor_485::agent_stop(uint8_t addressID)                   //电磁刹车停机
 {
-    FF.write_one(addressID,0x2000,0x0009);
+    write_one(addressID,0x2000,0x0009);
 }
 
 void Fire_motor_485::set_RPM(uint8_t addressID,uint16_t RPM)         //设定电机转速
 {
-    FF.write_one(addressID,0x2001,RPM);
+    write_one(addressID,0x2001,RPM);
 }
 
 void Fire_motor_485::set_acc_time(uint8_t addressID,uint16_t time)   //设定加速时间单位0.1S
 {
-    FF.write_one(addressID,0x2003,time);
+    write_one(addressID,0x2003,time);
 }
 
 void Fire_motor_485::set_redu_time(uint8_t addressID,uint16_t time)  //设定减速时间单位0.1S
 {
-    FF.write_one(addressID,0x2004,time);
+    write_one(addressID,0x2004,time);
 }
 
 void Fire_motor_485::set_motor_poles(uint8_t addressID,uint16_t num) //设定电机极对数
 {
-    FF.write_one(addressID,0x2002,num);
+    write_one(addressID,0x2002,num);
 }
 
 void Fire_motor_485::read_drive1_status(uint8_t addressID)           //驱动器状态字1
 {
-    FF.read_one(addressID,0x2100,0x0001);
+    read_one(addressID,0x2100,0x0001);
 }
 
 void Fire_motor_485::read_drive2_status(uint8_t addressID)           //驱动器状态字2
 {
-    FF.read_one(addressID,0x2101,0x0001);
+    read_one(addressID,0x2101,0x0001);
 }
 
 void Fire_motor_485::drive_error(uint8_t addressID)                 //故障代码
 {
-    FF.read_one(addressID,0x2102,0x0001);
+    read_one(addressID,0x2102,0x0001);
 }
 
 void Fire_motor_485::read_RPM(uint8_t addressID)
 {
-    FF.read_one(addressID, 0x3005, 0x0002);                          //读取电机输出设定转速和输出转速
-    // FF.read_one(addressID, 0X0914, 0x0002);
+    read_one(addressID, 0x3005, 0x0002);                          //读取电机输出设定转速和输出转速
+    // read_one(addressID, 0X0914, 0x0002);
 }
 
 void Fire_motor_485::update_status()
@@ -146,24 +221,24 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
         if (V_L > 5)
         {
 
-            FF.write_two(Left_motor,0X2000,2,(uint16_t)V_L);     //左边轮子反转
+            write_two(Left_motor,0X2000,2,(uint16_t)V_L);     //左边轮子反转
             
         }
         else if(V_L < -5)
         {
 
-            FF.write_two(Left_motor, 0X2000, 1, (uint16_t)(-V_L)); // 左边轮子正转
+            write_two(Left_motor, 0X2000, 1, (uint16_t)(-V_L)); // 左边轮子正转
         }
         else if(abs(V_L) < 5)
         {
 
             if(stop_button)
             {
-                FF.write_two(Left_motor,0X2000,9,0);     //左边轮子刹车
+                write_two(Left_motor,0X2000,9,0);     //左边轮子刹车
             }
             else
             {
-                FF.write_two(Left_motor,0X2000,6,0);     //左边轮子刹车
+                write_two(Left_motor,0X2000,6,0);     //左边轮子刹车
             }
 
         } 
@@ -178,22 +253,22 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
         if (V_R > 5)
         {
 
-            FF.write_two(Right_motor,0X2000,2,(uint16_t)V_R); 
+            write_two(Right_motor,0X2000,2,(uint16_t)V_R); 
         }
         else if(V_R < -5)
         {
  
-            FF.write_two(Right_motor,0X2000,1,(uint16_t)(-V_R)); 
+            write_two(Right_motor,0X2000,1,(uint16_t)(-V_R)); 
         }
         else if(abs(V_R) < 5)
         { 
             if(stop_button)
             {
-                FF.write_two(Right_motor,0X2000,9,0); 
+                write_two(Right_motor,0X2000,9,0); 
             }
             else
             {
-                FF.write_two(Right_motor,0X2000,6,0); 
+                write_two(Right_motor,0X2000,6,0); 
             }
 
         }
@@ -223,5 +298,4 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     
 
 }
-
 

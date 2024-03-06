@@ -443,6 +443,7 @@ bool RC_Channel::read_6pos_switch(int8_t& position)
 void RC_Channel::read_mode_switch()
 {
     int8_t position;
+    //读取6段开关的位置
     if (read_6pos_switch(position)) {
         // set flight mode and simple mode setting
         mode_switch_changed(modeswitch_pos_t(position));

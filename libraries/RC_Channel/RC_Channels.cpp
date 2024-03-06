@@ -209,10 +209,12 @@ void RC_Channels::reset_mode_switch()
 
 void RC_Channels::read_mode_switch()
 {
+    //判断遥控是否有效
     if (!has_valid_input()) {
         // exit immediately when no RC input
         return;
     }
+    //读取遥控器模式通道数值
     RC_Channel *c = flight_mode_channel();
     if (c == nullptr) {
         return;
