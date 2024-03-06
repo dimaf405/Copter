@@ -4026,9 +4026,14 @@ void GCS_MAVLINK::handle_common_message(const mavlink_message_t &msg)
         AP::opendroneid().handle_msg(chan, msg);
         break;
 #endif
-
+    case MAVLINK_MSG_ID_TEST_SEND: // 增加测试模式
+    {
+        mavlink_test_send_t send_data_t;
+        mavlink_msg_test_send_decode(&msg,&send_data_t);
+        break;
+    }
 #if AP_SIGNED_FIRMWARE
-    case MAVLINK_MSG_ID_SECURE_COMMAND:
+        case MAVLINK_MSG_ID_SECURE_COMMAND:
     case MAVLINK_MSG_ID_SECURE_COMMAND_REPLY:
         AP_CheckFirmware::handle_msg(chan, msg);
         break;
