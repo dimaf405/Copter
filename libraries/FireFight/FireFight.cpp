@@ -285,7 +285,8 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
     // uint16_t temp = 0;
     // uint8_t add_offset = 30; // 遥控器增加数值
     int16_t exp_offset_Up_Down = 0, exp_offset_Left_Right = 0;
-    int16_t dead_offset_motor = 30;
+    u_int8_t play_dead_offset_motor = 13;
+    u_int8_t dead_offset_motor = play_dead_offset_motor - 2;
     // uint8_t temp;
 
     static uint8_t time_cnt_up = 0, time_cnt_left = 0, time_cnt_zhu = 0; //,time_cnt_record = 0;
@@ -304,12 +305,12 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
     else if (exp_offset_Left_Right < -3276)
         exp_offset_Left_Right += 6553;
 
-    if ((hal.rcin->read(2)) > under_offset)
+    if ((hal.rcin->read(1)) < low_offset)
     {
         // aim_Up_Down_pulse += add_offset;
         exp_offset_Up_Down = 6666;
     }
-    else if ((hal.rcin->read(2)) < low_offset)
+    else if ((hal.rcin->read(1)) > under_offset)
     {
         exp_offset_Up_Down = -6666;
         // aim_Up_Down_pulse -= add_offset;
@@ -586,7 +587,8 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
 
     if ((hal.rcin->read(5)) > under_offset) // 表示正在录制动作
     {
-        record_delay++;                                                                         // 记录时间
+        // replay_flag = 2;
+
         if ((left_right != 0 || up_down != 0) && (up_down_last == 88 && left_right_last == 88)) // 有动作时开始记录
         {
             record_delay = 0;
@@ -605,7 +607,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
         {
             if ((up_down_last != 88 && left_right_last != 88)) // 过了初始化才能进入记录
             {
-                if (up_down != up_down_last || left_right != left_right_last || record_T * DT_ms * 5 > 2000) // 当动作发生改变时，记录当前电机脉冲数值
+                if (up_down != up_down_last || left_right != left_right_last || record_T * DT_ms > 2000) // 当动作发生改变时，记录当前电机脉冲数值
                 {
                     actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
                     up_down_last = up_down;
@@ -615,6 +617,7 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
                 record_T++;
             }
         }
+        record_delay++; // 记录时间
     }
     else if ((hal.rcin->read(5)) < low_offset)
     {
@@ -627,16 +630,21 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
             action_index++;
             current_delay = 0;
         }
-        else if ((abs(exp_offset_Left_Right) < 33 && abs(exp_offset_Up_Down) < 33))
+        else if ((abs(exp_offset_Left_Right) < play_dead_offset_motor && abs(exp_offset_Up_Down) < play_dead_offset_motor))
         {
-            if ((current_delay >= aim_delay))
+            if(current_delay >= aim_delay)
             {
                 if (action_index < num_actions)
                 {
                     aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
                     aim_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
                     aim_delay = actions[action_index].record_delay;
+                    if (action_index == 1)  //当为第一个动作时候，不记录时间
+                    {
+                        current_delay = 0;
+                    }
                     action_index++;
+                    
                 }
                 else
                 {
@@ -645,13 +653,19 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
                     aim_delay = 0;
                 }
             }
+  
         }
         current_delay++;
     }
 
     else if (((hal.rcin->read(5)) > low_offset) && ((hal.rcin->read(5)) < under_offset))
     {
-        if ((up_down_last != 88 && left_right_last != 88) || replay_flag)
+        // if(replay_flag == 2)  //表示从录制转到中间，需要记录一次
+        // {
+        //     actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
+        //     replay_flag = 0;  //录制正式结束
+        // }
+        if ((up_down_last != 88 && left_right_last != 88) || replay_flag == 1)
         {
             up_down_last = 88;
             left_right_last = 88;

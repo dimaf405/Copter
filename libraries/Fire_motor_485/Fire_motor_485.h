@@ -40,6 +40,7 @@ public : /*addressID为控制板的485ID，不是功能地址*/
 
     void function_fire_motor_485(uint8_t DT_ms);
     void motor_init(); // 电机初始化程序
+    void motor_input(int16_t motor_left, int16_t motor_right);
 };
 
 

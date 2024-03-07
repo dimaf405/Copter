@@ -73,7 +73,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(read_radio, 50, 200, 3),
     SCHED_TASK(ahrs_update, 400, 400, 6),
     SCHED_TASK(read_rangefinders, 50, 200, 9),
-    SCHED_TASK(FireFight_open, 200, 400, 11), // 消防炮功能函数，200HZ速度
+    SCHED_TASK(FireFight_open, 500, 200, 11), // 消防炮功能函数，200HZ速度
     SCHED_TASK(Fire_CLED, 50, 200, 13),       // LED功能函数，50HZ速度
 #if AP_OPTICALFLOW_ENABLED
     SCHED_TASK_CLASS(AP_OpticalFlow, &rover.optflow, update, 200, 160, 11),
@@ -140,20 +140,16 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
 #endif
 };
 
-void Rover::FireFight_open() // 每20毫秒执行一次
+void Rover::FireFight_open() // 每2毫秒执行一次
 {
     uint8_t static stat = 0;
 
-    if (hal.rcin->read(6) > 1800) //&& current_v > 40)
+    if (arming.is_armed()) //&& current_v > 40)
     {
         if (stat == 0)
         {
-            firefight_rover.function_fire_fight(6);
+            firefight_rover.function_fire_fight(2);
         }
-        // if (stat == 1)
-        // {
-        //     fire_motor_rover.function_fire_motor_485(6);
-        // }
         else if (stat == 1)
         {
             firefight_rover.read_one(1, 25, 2);   // 发送读取脉冲数值命令
@@ -174,13 +170,10 @@ void Rover::FireFight_open() // 每20毫秒执行一次
         else if (stat == 2)
             firefight_rover.left_button(0);
         else if (stat == 3)
+        {
             firefight_rover.right_button(0);
-        else if (stat == 4)
-            firefight_rover.write_two(100, 0x2000, 6, 0);
-        else if (stat == 5)
-            firefight_rover.write_two(101, 0x2000, 6, 0);
-        else
             stat = 0;
+        }
         stat++;
     }
 }

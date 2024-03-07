@@ -224,6 +224,7 @@ void RCOutput::push()
                 period_us = safe_pwm[i];
             }
             write_int(i, period_us);
+            gcs().send_text(MAV_SEVERITY_CRITICAL, "i:%d,period_us:%d", i, period_us);
         }
     }
 

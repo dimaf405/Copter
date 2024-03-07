@@ -16,5 +16,6 @@ void Rover::set_servos(void)
         }
 
         g2.motors.output(arming.is_armed(), speed, G_Dt);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "speed:%f", speed);
     }
 }
