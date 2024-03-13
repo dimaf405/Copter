@@ -146,6 +146,7 @@ void Rover::FireFight_open() // 每2毫秒执行一次
 
     if (arming.is_armed()) //&& current_v > 40)
     {
+        fire_led.launch_motor();
         if (stat == 0)
         {
             firefight_rover.function_fire_fight(2);
@@ -163,6 +164,7 @@ void Rover::FireFight_open() // 每2毫秒执行一次
     }
     else
     {
+        fire_led.stop_motor();
         if (stat == 0)
             firefight_rover.up_button(0);
         else if (stat == 1)

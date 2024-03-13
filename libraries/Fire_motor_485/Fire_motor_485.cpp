@@ -8,12 +8,12 @@
 
 void Fire_motor_485::motor_init()
 {
-    hal.serial(2)->begin(19200); // 初始化串口程序，电机波特率设置成57600
+    // hal.serial(2)->begin(19200); // 初始化串口程序，电机波特率设置成57600
 
-    hal.scheduler->delay(100); // 等待初始化串口
-    write_one(100,0x2009,6);
-    hal.scheduler->delay(100); // 设置串口速度
-    write_one(101,0x2009,6);
+    // hal.scheduler->delay(100); // 等待初始化串口
+    // write_one(100,0x2009,6);
+    // hal.scheduler->delay(100); // 设置串口速度
+    // write_one(101,0x2009,6);
     hal.scheduler->delay(100); // 设置串口速度
     hal.serial(2)->begin(57600); // 初始化串口程序
     hal.scheduler->delay(100);   // 延时等待串口初始化
@@ -215,8 +215,8 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     V_L = LIMIT(V_L,-2950,2950);   //输出限幅
     V_R = LIMIT(V_R,-2950,2950);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "右期望值为:%d", (int16_t)V_R);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
     if( golab_cnt == 0)  //如果更新数值没有改变，则见不输出V_L != last_V_L &&
     {
         // V_L = -V_L;
@@ -278,11 +278,11 @@ void Fire_motor_485::function_fire_motor_485(uint8_t DT_ms)
     }
     else if (golab_cnt == 2)
     {
-        read_RPM(100);
+        // read_RPM(100);
     }
     else if (golab_cnt == 3)
     {
-        read_RPM(101);
+        // read_RPM(101);
     }
 
     golab_cnt++;
@@ -334,22 +334,22 @@ void Fire_motor_485::motor_input(int16_t motor_left, int16_t motor_right)
     V_L = LIMIT(motor_left, -2950, 2950); // 输出限幅
     V_R = LIMIT(motor_right, -2950, 2950);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "右期望值为:%d", (int16_t)V_R);
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
     if (golab_cnt == 0) // 如果更新数值没有改变，则见不输出V_L != last_V_L &&
     {
         // V_L = -V_L;
-        if (V_L > 50)
+        if (V_L > 100)
         {
 
             write_two(Left_motor, 0X2000, 2, (uint16_t)V_L); // 左边轮子反转
         }
-        else if (V_L < -50)
+        else if (V_L < -100)
         {
 
             write_two(Left_motor, 0X2000, 1, (uint16_t)(-V_L)); // 左边轮子正转
         }
-        else if (abs(V_L) < 50)
+        else if (abs(V_L) < 100)
         {
 
             if (stop_button)
@@ -367,17 +367,17 @@ void Fire_motor_485::motor_input(int16_t motor_left, int16_t motor_right)
     else if (golab_cnt == 1) // 如果更新数值没有改变，则见不输出V_R != last_V_R
     {
         V_R = -V_R;
-        if (V_R > 50)
+        if (V_R > 100)
         {
 
             write_two(Right_motor, 0X2000, 2, (uint16_t)V_R);
         }
-        else if (V_R < -50)
+        else if (V_R < -100)
         {
 
             write_two(Right_motor, 0X2000, 1, (uint16_t)(-V_R));
         }
-        else if (abs(V_R) < 50)
+        else if (abs(V_R) < 100)
         {
             if (stop_button)
             {
@@ -390,18 +390,18 @@ void Fire_motor_485::motor_input(int16_t motor_left, int16_t motor_right)
         }
         // last_V_R = V_R;
     }
-    else if (golab_cnt == 2)
-    {
-        read_RPM(100);
-    }
-    else if (golab_cnt == 3)
-    {
-        read_RPM(101);
-    }
+    // else if (golab_cnt == 2)
+    // {
+    //     // read_RPM(100);
+    // }
+    // else if (golab_cnt == 3)
+    // {
+    //     // read_RPM(101);
+    // }
 
     golab_cnt++;
 
-    if (golab_cnt == 4 /* condition */)
+    if (golab_cnt == 2 /* condition */)
     {
         golab_cnt = 0;
         /* code */
