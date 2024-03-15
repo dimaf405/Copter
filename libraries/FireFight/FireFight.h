@@ -29,7 +29,7 @@ public:
     // uint8_t check_send_one(uint16_t val);
     uint8_t check_send_one(uint8_t addressID);
     void function_fire_fight(uint8_t DT_ms);
-    void write_two(uint8_t address_ID, uint16_t start_reg_adress, uint16_t val_1, uint16_t val_2);
+    void write_two(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2);
     void up_button(uint16_t val);
     void down_button(uint16_t val);
     void left_button(uint16_t val);

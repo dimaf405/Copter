@@ -25,16 +25,16 @@ volatile uint8_t action_index = 0; // 执行动作
 void FireFight::uart_init()
 {
 
-    hal.serial(1)->begin(19200); // 初始化串口程序
+    hal.serial(1)->begin(256000); // 初始化串口程序
     hal.serial(1)->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
     hal.serial(1)->set_unbuffered_writes(true);
     hal.scheduler->delay(100); // 等待初始化串口
-    write_one(0x01, 0x0002, 10);
-    hal.scheduler->delay(100); // 上下电机堵转电流
-    write_one(0x01, 0x0003, 200);
-    hal.scheduler->delay(100); // 雾柱电机堵转电流
-    write_one(0x01, 0x0004, 1);
-    hal.scheduler->delay(100); // 堵转时间
+    // write_one(0x01, 0x0002, 10);
+    // hal.scheduler->delay(100); // 上下电机堵转电流
+    // write_one(0x01, 0x0003, 200);
+    // hal.scheduler->delay(100); // 雾柱电机堵转电流
+    // write_one(0x01, 0x0004, 1);
+    // hal.scheduler->delay(100); // 堵转时间
     // hal.serial(3)->begin(115200);
 
     gcs().send_text(MAV_SEVERITY_CRITICAL, // 地面站消息发送
@@ -75,7 +75,7 @@ void FireFight::write_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_
     hal.serial(1)->write(data_to_send, cnt);
 }
 
-void FireFight::write_two(uint8_t address_ID, uint16_t start_reg_adress, uint16_t val_1, uint16_t val_2) // 写两个寄存器，用于归零
+void FireFight::write_two(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2) // 写两个寄存器，用于归零
 {
     uint8_t data_to_send[15];
     uint8_t cnt = 0;
@@ -112,7 +112,7 @@ uint8_t FireFight::check_send_one(uint8_t addressID)
             c = hal.serial(1)->read();
             if (linebuf_len == 0)
             {
-                if (c == 1 || c == 100 || c == 101) // ID正确
+                if (c == 1) // ID正确
                 {
                     linebuf[linebuf_len++] = c;
                 }
@@ -156,19 +156,19 @@ uint8_t FireFight::check_send_one(uint8_t addressID)
                             // gcs().send_text(MAV_SEVERITY_CRITICAL, "Left_Right_pulse:%d", Left_Right_pulse);
                             /* code */
                         }
-                        else if (linebuf[0] == 100) // 读取左边电机转速设定值和当前转速
-                        {
-                            Set_Left_motor = ((linebuf[3] << 8) | linebuf[4]);
-                            Read_Left_motor = ((linebuf[5] << 8) | linebuf[6]);
-                            // gcs().send_text(MAV_SEVERITY_CRITICAL, "Set_Left_motor:%d", (int16_t)Set_Left_motor);
-                            // gcs().send_text(MAV_SEVERITY_CRITICAL, "Read_Left_motor:%d", (int16_t)Read_Left_motor);
-                        }
-                        else if (linebuf[0] == 101) // 读取右边电机转速设定值和当前转速
-                        {
-                            Set_Right_motor = ((linebuf[3] << 8) | linebuf[4]);
-                            Read_Right_motor = ((linebuf[5] << 8) | linebuf[6]);
-                            // gcs().send_text(MAV_SEVERITY_CRITICAL, "Read_Right_motor:%d", (int16_t)Read_Right_motor);
-                        }
+                        // else if (linebuf[0] == 100) // 读取左边电机转速设定值和当前转速
+                        // {
+                        //     Set_Left_motor = ((linebuf[3] << 8) | linebuf[4]);
+                        //     Read_Left_motor = ((linebuf[5] << 8) | linebuf[6]);
+                        //     // gcs().send_text(MAV_SEVERITY_CRITICAL, "Set_Left_motor:%d", (int16_t)Set_Left_motor);
+                        //     // gcs().send_text(MAV_SEVERITY_CRITICAL, "Read_Left_motor:%d", (int16_t)Read_Left_motor);
+                        // }
+                        // else if (linebuf[0] == 101) // 读取右边电机转速设定值和当前转速
+                        // {
+                        //     Set_Right_motor = ((linebuf[3] << 8) | linebuf[4]);
+                        //     Read_Right_motor = ((linebuf[5] << 8) | linebuf[6]);
+                        //     // gcs().send_text(MAV_SEVERITY_CRITICAL, "Read_Right_motor:%d", (int16_t)Read_Right_motor);
+                        // }
 
                         // gcs().send_text(MAV_SEVERITY_CRITICAL, "上下的脉冲值为:%d", Up_Down_pulse);
                     }
@@ -285,11 +285,13 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
     // uint16_t temp = 0;
     // uint8_t add_offset = 30; // 遥控器增加数值
     int16_t exp_offset_Up_Down = 0, exp_offset_Left_Right = 0;
-    u_int8_t play_dead_offset_motor = 13;
+    u_int8_t play_dead_offset_motor = 100;
     u_int8_t dead_offset_motor = play_dead_offset_motor - 2;
     // uint8_t temp;
+    uint16_t rcin_1 = (hal.rcin->read(1));
+    uint16_t rcin_3 = (hal.rcin->read(3));
 
-    static uint8_t time_cnt_up = 0, time_cnt_left = 0, time_cnt_zhu = 0; //,time_cnt_record = 0;
+    // static uint8_t time_cnt_up = 0, time_cnt_left = 0, time_cnt_zhu = 0; //,time_cnt_record = 0;
 
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"rcin(9):%d",hal.rcin->read(9));
 
@@ -305,15 +307,10 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
     else if (exp_offset_Left_Right < -3276)
         exp_offset_Left_Right += 6553;
 
-    if ((hal.rcin->read(1)) < low_offset)
+    if (abs(rcin_1 - 1500) > 50)
     {
         // aim_Up_Down_pulse += add_offset;
-        exp_offset_Up_Down = 6666;
-    }
-    else if ((hal.rcin->read(1)) > under_offset)
-    {
-        exp_offset_Up_Down = -6666;
-        // aim_Up_Down_pulse -= add_offset;
+        exp_offset_Up_Down = (rcin_1 - 1500)*2.22;
     }
     else if (replay_flag != 1)
     {
@@ -321,15 +318,10 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
                                 //  aim_Up_Down_pulse = Up_Down_pulse;
     }
 
-    if ((hal.rcin->read(3)) > under_offset)
+    if (abs(rcin_3 - 1500) > 50)
     {
         // aim_Left_Right_pulse += add_offset;
-        exp_offset_Left_Right = 6666;
-    }
-    else if ((hal.rcin->read(3)) < low_offset)
-    {
-        // aim_Left_Right_pulse -= add_offset;
-        exp_offset_Left_Right = -6666;
+        exp_offset_Left_Right = (rcin_3 - 1500) * 2.22;
     }
     else if (replay_flag != 1)
     {
@@ -337,253 +329,100 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
         // aim_Left_Right_pulse = Left_Right_pulse;
     }
 
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "上下的脉冲值为:%d", Up_Down_pulse);
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的脉冲值为:%d", Left_Right_pulse);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "Up_Down_pulse:%d", Up_Down_pulse);
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "Left_Right_pulse:%d", Left_Right_pulse);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的期望值为:%d", aim_Left_Right_pulse);
-    if (time_samp <= DT_ms) // 第一个周期
+
+    if (exp_offset_Up_Down > dead_offset_motor) // 当计算期望值为正数时候，启动按键上按钮
     {
-        if (exp_offset_Up_Down > dead_offset_motor) // 当计算期望值为正数时候，启动按键上按钮
-        {
-            /*写入两个地址的格式 从机ID 开始写入地址 写入参数1 写入参数2*/
-            /*第一个参数是上，第二个是下*/
 
-            if (/* condition */ time_cnt_up == 0)
-            {
-                down_button(0); /* code */
-            }
-            time_cnt_up++;
-            if (time_cnt_up >= 2) // 延时一个执行周期
-            {
-                /* code */
-                up_button(1);
-                time_cnt_up = 0;
-                up_down = 1; // 表示当前正在向上
-                // stalled_protect_UD = 0;
-            }
-            // write_two(0x01,0x000C,1,0);
-        }
-        if (exp_offset_Up_Down < -dead_offset_motor) // 当计算期望值为负数时候，启动按键下按钮
-        {
-            if (/* condition */ time_cnt_up == 0)
-            {
-                up_button(0); /* code */
-            }
+        up_down = 1; // 表示当前正在向上
 
-            time_cnt_up++;
-            if (time_cnt_up >= 2) // 延时一个执行周期
-            {
-                /* code */
-                down_button(1);
-                time_cnt_up = 0;
-                up_down = -1; // 表示正在向下
-                // stalled_protect_UD = 0;
-            }
+    }
+    if (exp_offset_Up_Down < -dead_offset_motor) // 当计算期望值为负数时候，启动按键下按钮
+    {
 
-            // firefight_rover.up_button(0);
+        up_down = -1; // 表示正在向下
 
-            // write_two(0x01,0x000C,0,1);
-        }
-        else if (abs(exp_offset_Up_Down) < dead_offset_motor) // 重复发送4次
-        {
+    }
+    else if (abs(exp_offset_Up_Down) < dead_offset_motor) // 重复发送4次
+    {
 
-            up_down = 0;
+        up_down = 0;
 
-            if (/* condition */ time_cnt_up == 0)
-            {
-                up_button(0); // 将柱清零            /* code */
-            }
-            time_cnt_up++;
-            if (time_cnt_up >= 2) // 延时一个执行周期
-            {
-                /* code */
-                down_button(0);
-                time_cnt_up = 0;
-                // up_down++;
-            }
-            // write_two(0x01,0x000C,0,0);
-        }
     }
 
-    else if (time_samp <= 3 * DT_ms) // 第二个周期
+    if (exp_offset_Left_Right < -dead_offset_motor)
     {
-        if (exp_offset_Left_Right < -dead_offset_motor)
-        {
+        left_right = -1;
 
-            if (/* condition */ time_cnt_left == 0)
-            {
-                right_button(0); /* code */
-            }
-            time_cnt_left++;
-            if (time_cnt_left >= 2) // 延时一个执行周期
-            {
-                /* code */
-                left_button(1);
-                time_cnt_left = 0;
-                left_right = -1;
-                // stalled_protect_LR = 0;
-            }
-            // write_two(0x01,0x000E,1,0);
-        }
-        else if (exp_offset_Left_Right > dead_offset_motor)
-        {
-            if (/* condition */ time_cnt_left == 0)
-            {
-                left_button(0); /* code */
-            }
+    }
+    else if (exp_offset_Left_Right > dead_offset_motor)
+    {
 
-            time_cnt_left++;
-            if (time_cnt_left >= 2) // 延时一个执行周期
-            {
-                /* code */
-                right_button(1);
-                time_cnt_left = 0;
-                left_right = 1;
-                // stalled_protect_LR = 0;
-            }
-            // write_two(0x01,0x000E,0,1);
-        }
-        else if (abs(exp_offset_Left_Right) < dead_offset_motor) // 重复发送4次
-        {
-            left_right = 0;
-            if (/* condition */ time_cnt_left == 0)
-            {
-                left_button(0); // 将柱清零            /* code */
-            }
-            time_cnt_left++;
-            if (time_cnt_left >= 2) // 延时一个执行周期
-            {
-                /* code */
-                right_button(0);
-                time_cnt_left = 0;
-                // left_right++;
-            }
-            // leftandright_zero();
-            // write_two(0x01,0x000E,0,0);
-        }
+        left_right = 1;
+
+    }
+    else if (abs(exp_offset_Left_Right) < dead_offset_motor) // 重复发送4次
+    {
+        left_right = 0;
+
+    }
+    //发送控制电机信号
+    write_two(1,0,exp_offset_Up_Down,exp_offset_Left_Right);
+
+    if ((hal.rcin->read(4)) > under_offset)
+    {
+        // if (/* condition */ time_cnt_zhu == 0)
+        // {
+        //     wu_button(0); // 将雾清零             /* code */
+        // }
+        // time_cnt_zhu++;
+        // if (time_cnt_zhu >= 2) // 延时一个执行周期
+        // {
+        //     /* code */
+        //     zhu_button(1);
+        //     time_cnt_zhu = 0;
+        // }
+        write_two(0x01,0x0010,1,0);
+
+    }
+    else if ((hal.rcin->read(4)) < low_offset)
+    {
+        // if (/* condition */ time_cnt_zhu == 0)
+        // {
+        //     zhu_button(0); // 将柱清零            /* code */
+        // }
+        // time_cnt_zhu++;
+        // if (time_cnt_zhu >= 2) // 延时一个执行周期
+        // {
+        //     /* code */
+        //     wu_button(1);
+        //     time_cnt_zhu = 0;
+        // }
+        write_two(0x01,0x0010,0,1);
     }
 
-    else if (time_samp <= 5 * DT_ms) // 第三个周期
+    else if (((hal.rcin->read(4)) > low_offset) && ((hal.rcin->read(4)) < under_offset))
     {
-        if ((hal.rcin->read(4)) > under_offset)
-        {
-            if (/* condition */ time_cnt_zhu == 0)
-            {
-                wu_button(0); // 将雾清零             /* code */
-            }
-            time_cnt_zhu++;
-            if (time_cnt_zhu >= 2) // 延时一个执行周期
-            {
-                /* code */
-                zhu_button(1);
-                time_cnt_zhu = 0;
-            }
-            // write_two(0x01,0x0010,1,0);
-        }
-        else if ((hal.rcin->read(4)) < low_offset)
-        {
-            if (/* condition */ time_cnt_zhu == 0)
-            {
-                zhu_button(0); // 将柱清零            /* code */
-            }
-            time_cnt_zhu++;
-            if (time_cnt_zhu >= 2) // 延时一个执行周期
-            {
-                /* code */
-                wu_button(1);
-                time_cnt_zhu = 0;
-            }
-            // write_two(0x01,0x0010,0,1);
-        }
+        // if (/* condition */ time_cnt_zhu == 0)
+        // {
+        //     zhu_button(0); // 将柱清零            /* code */
+        // }
+        // time_cnt_zhu++;
+        // if (time_cnt_zhu >= 2) // 延时一个执行周期
+        // {
 
-        else if (((hal.rcin->read(4)) > low_offset) && ((hal.rcin->read(4)) < under_offset))
-        {
-            if (/* condition */ time_cnt_zhu == 0)
-            {
-                zhu_button(0); // 将柱清零            /* code */
-            }
-            time_cnt_zhu++;
-            if (time_cnt_zhu >= 2) // 延时一个执行周期
-            {
+        //     /* code */
 
-                /* code */
-
-                wu_button(0);
-                time_cnt_zhu = 0;
-                // wu_zhu++;
-            }
-            // write_two(0x01,0x0010,0,0);
-        }
+        //     wu_button(0);
+        //     time_cnt_zhu = 0;
+        //     // wu_zhu++;
+        // }
+        write_two(0x01,0x0010,0,0);
     }
-    // if (time_samp <= 5 * DT_ms)
-    // {
-    //     if (left_right != 0)
-    //     {
-    //         temp = abs(Left_Right_pulse_Last - Left_Right_pulse);
-    //         if(temp > 5000)
-    //         {
-    //             temp = 6553 - temp;
-    //         }
-
-    //         if (temp < 2)
-    //         {
-    //             stalled_cnt_flag_LR++;
-    //         }
-    //         else
-    //         {
-    //             stalled_cnt_flag_LR = 0;
-    //         }
-    //         if (stalled_cnt_flag_LR >= 10)
-    //         {
-    //             aim_Left_Right_pulse = Left_Right_pulse;
-    //             if (left_right == 1)
-    //             {
-    //                 stalled_protect_LR = 1;
-    //                 gcs().send_text(MAV_SEVERITY_CRITICAL, "左右差值值为:%d", temp);
-
-    //             }
-
-    //             else if (left_right == -1)
-    //             {
-    //                 stalled_protect_LR = -1;
-    //             }
-    //             stalled_cnt_flag_LR = 0;
-    //             gcs().send_text(MAV_SEVERITY_CRITICAL, "左右保护值为:%d", stalled_protect_LR);
-    //         }
-
-    //         Left_Right_pulse_Last = Left_Right_pulse;
-    //     }
-
-    //     if (up_down != 0)
-    //     {
-    //         temp = abs(Up_Down_pulse_Last - Up_Down_pulse);
-    //         if (temp > 5000)
-    //         {
-    //             temp = 6553 - temp;
-    //         }
-
-    //         if (temp < 2)
-    //         {
-    //             stalled_cnt_flag_UD++;
-    //         }
-    //         else
-    //         {
-    //             stalled_cnt_flag_UD = 0;
-    //         }
-    //         if (stalled_cnt_flag_UD >= 10)
-    //         {
-    //             aim_Up_Down_pulse = Up_Down_pulse;
-    //             if (up_down == 1)
-    //                 stalled_protect_UD = 1;
-    //             else if (up_down == -1)
-    //                 stalled_protect_UD = -1;
-    //         }
-    //         stalled_cnt_flag_UD = 0;
-    //         Up_Down_pulse_Last = Up_Down_pulse;
-    //         // gcs().send_text(MAV_SEVERITY_CRITICAL, "上下差值值为:%d", abs(Up_Down_pulse_Last - Up_Down_pulse));
-    //     }
-    // }
 
     if ((hal.rcin->read(5)) > under_offset) // 表示正在录制动作
     {

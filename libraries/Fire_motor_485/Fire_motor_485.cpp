@@ -334,8 +334,8 @@ void Fire_motor_485::motor_input(int16_t motor_left, int16_t motor_right)
     V_L = LIMIT(motor_left, -2950, 2950); // 输出限幅
     V_R = LIMIT(motor_right, -2950, 2950);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "右期望值为:%d", (int16_t)V_R);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_L:%d", (int16_t)V_L);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "V_R:%d", (int16_t)V_R);
     if (golab_cnt == 0) // 如果更新数值没有改变，则见不输出V_L != last_V_L &&
     {
         // V_L = -V_L;

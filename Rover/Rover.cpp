@@ -142,41 +142,21 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
 
 void Rover::FireFight_open() // 每2毫秒执行一次
 {
-    uint8_t static stat = 0;
+    // uint8_t static stat = 0;
 
     if (arming.is_armed()) //&& current_v > 40)
     {
         fire_led.launch_motor();
-        if (stat == 0)
-        {
-            firefight_rover.function_fire_fight(2);
-        }
-        else if (stat == 1)
-        {
-            firefight_rover.read_one(1, 25, 2);   // 发送读取脉冲数值命令
-            firefight_rover.check_send_one(0x01); // 串口接收返回脉冲数值
-        }
-        stat++;
-        if (stat >= 2)
-        {
-            stat = 0;
-        }
+        firefight_rover.function_fire_fight(2);
+
+        // firefight_rover.read_one(1, 25, 2);   // 发送读取脉冲数值命令
+        firefight_rover.check_send_one(0x01); // 串口接收返回脉冲数值
     }
     else
     {
         fire_led.stop_motor();
-        if (stat == 0)
-            firefight_rover.up_button(0);
-        else if (stat == 1)
-            firefight_rover.down_button(0);
-        else if (stat == 2)
-            firefight_rover.left_button(0);
-        else if (stat == 3)
-        {
-            firefight_rover.right_button(0);
-            stat = 0;
-        }
-        stat++;
+        firefight_rover.write_two(0x01, 0x0010, 0, 0);
+        firefight_rover.write_two(0x01, 0x0000, 0, 0);
     }
 }
 
