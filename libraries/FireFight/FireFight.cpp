@@ -329,8 +329,8 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
         // aim_Left_Right_pulse = Left_Right_pulse;
     }
 
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
     gcs().send_text(MAV_SEVERITY_CRITICAL, "Up_Down_pulse:%d", Up_Down_pulse);
     gcs().send_text(MAV_SEVERITY_CRITICAL, "Left_Right_pulse:%d", Left_Right_pulse);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的期望值为:%d", aim_Left_Right_pulse);

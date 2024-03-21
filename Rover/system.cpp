@@ -17,7 +17,7 @@ void Rover::init_ardupilot()
 //增加初始化函数
 firefight_rover.uart_init();
 fire_motor_rover.motor_init();
-
+fire_led.Fire_LED_Init();
 #if STATS_ENABLED == ENABLED
     // initialise stats module
     g2.stats.init();

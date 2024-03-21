@@ -11,7 +11,10 @@ void Fire_LED::Fire_LED_Init()
     hal.gpio->pinMode(3, HAL_GPIO_OUTPUT); // 设置成输出模式
     hal.gpio->pinMode(8, HAL_GPIO_OUTPUT); // 设置成输出模式
     hal.gpio->pinMode(9, HAL_GPIO_OUTPUT); // 设置成输出模式
-    
+
+    Alert_led_on;
+    hal.scheduler->delay(1000); // 设置初始化完成声音提示时间
+    Alert_led_off;
 }
 
 Fire_LED::Fire_LED(/* args */)

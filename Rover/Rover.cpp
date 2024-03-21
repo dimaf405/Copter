@@ -157,6 +157,7 @@ void Rover::FireFight_open() // 每2毫秒执行一次
         fire_led.stop_motor();
         firefight_rover.write_two(0x01, 0x0010, 0, 0);
         firefight_rover.write_two(0x01, 0x0000, 0, 0);
+        fire_motor_rover.motor_input(0,0);
     }
 }
 
