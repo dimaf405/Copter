@@ -48,6 +48,10 @@ public:
     int16_t Left_Right_pulse, Up_Down_pulse;
     uint16_t Set_Left_motor, Read_Left_motor;
     uint16_t Set_Right_motor, Read_Right_motor;
+//     static const struct AP_Param::GroupInfo var_info[];
+// protected:
+//     AP_Int16 Stl_ct_LR; //堵转电流左右
+//     AP_Int16 Stl_ct_UD; //堵转电流上下
 };
 
 #endif

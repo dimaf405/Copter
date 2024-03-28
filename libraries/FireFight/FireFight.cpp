@@ -526,3 +526,20 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
     //     time_samp = 0;
     // }
 }
+
+// const AP_Param::GroupInfo FireFight::var_info[] =
+// {
+
+//         // @Param: P
+//         // @DisplayName: PID Proportional Gain
+//         // @Description: P Gain which produces an output value that is proportional to the current error value
+//         // AP_GROUPINFO("STA_CURRENT_LR", 0, Stl_ct_LR, _kp, 0),
+
+//         // // @Param: D
+//         // // @DisplayName: PID Derivative Gain
+//         // // @Description: D Gain which produces an output that is proportional to the rate of change of the error
+//         // AP_GROUPINFO("STA_CURRENT_UD", 1, Stl_ct_UD, _kd, 0),
+
+//         // AP_GROUPEND
+        
+// }
