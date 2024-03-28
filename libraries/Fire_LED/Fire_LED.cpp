@@ -55,11 +55,11 @@ void Fire_LED::Fire_Power_LED(float V, uint8_t DT_ms)
 {
     static uint16_t time_samp = 0;
     Fire_Alert_LED();
-    if (V > 50.7f) // 电量大于百分之50%时
+    if (V > 48.7f) // 电量大于百分之50%时
     {
         power_led_on;
     }
-    else if (V > 48.75f) // 电量大于百分之25小于百分之和50
+    else if (V > 46.75f) // 电量大于百分之25小于百分之和50
     {
         if (time_samp > 500)
             power_led_on;
@@ -72,7 +72,7 @@ void Fire_LED::Fire_Power_LED(float V, uint8_t DT_ms)
         }
         time_samp += DT_ms;
     }
-    else if (V > 46.8) // 电量在0～25%之间，发出快闪警告
+    else if (V > 44.8) // 电量在0～25%之间，发出快闪警告
     {
         if (time_samp > 300)
             power_led_on;

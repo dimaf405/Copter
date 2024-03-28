@@ -8,19 +8,19 @@
 #define FRAME_LENGTH 9  // 帧长
 #define MAX_ACTIONS 200 // 最大动作数量100
 
-class Action
-{
-public:
-    int16_t record_Left_Right_pulse, record_Up_Down_pulse;
-    uint16_t record_delay;
-    Action() : record_Left_Right_pulse(0), record_Up_Down_pulse(0), record_delay(0) {} // 添加默认构建函数
-    Action(int16_t Action_record_Left_Right_pulse, int16_t Action_record_Up_Down_pulse, uint16_t Action_record_delay) : record_Left_Right_pulse(Action_record_Left_Right_pulse), record_Up_Down_pulse(Action_record_Up_Down_pulse), record_delay(Action_record_delay) {}
-};
+// class Action
+// {
+// public:
+//     int16_t record_Left_Right_pulse, record_Up_Down_pulse;
+//     uint16_t record_delay;
+//     Action() : record_Left_Right_pulse(0), record_Up_Down_pulse(0), record_delay(0) {} // 添加默认构建函数
+//     Action(int16_t Action_record_Left_Right_pulse, int16_t Action_record_Up_Down_pulse, uint16_t Action_record_delay) : record_Left_Right_pulse(Action_record_Left_Right_pulse), record_Up_Down_pulse(Action_record_Up_Down_pulse), record_delay(Action_record_delay) {}
+// };
 
 // const volatile Action actions[MAX_ACTIONS]; // 动作数组
-std::array<Action, MAX_ACTIONS> actions;
-volatile uint8_t num_actions = 0;  // 记录的动作数量
-volatile uint8_t action_index = 0; // 执行动作
+// std::array<Action, MAX_ACTIONS> actions;
+// volatile uint8_t num_actions = 0;  // 记录的动作数量
+// volatile uint8_t action_index = 0; // 执行动作
 
 void FireFight::uart_init()
 {
@@ -268,13 +268,13 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
 {
     // RC_Channel &_rc = rc();
     // uint64_t start = AP_HAL::micros64();
-    static uint16_t time_samp = 0; // 每个执行周期只能发送一条信息
-    static int8_t up_down = 0, up_down_last = 88;
-    static int8_t left_right = 0, left_right_last = 88;
-    static int16_t aim_Left_Right_pulse = 0, aim_Up_Down_pulse = 0;
-    static uint16_t record_delay = 0, aim_delay = 0, current_delay = 0;
+    // static uint16_t time_samp = 0; // 每个执行周期只能发送一条信息
+    // static int8_t up_down = 0, up_down_last = 88;
+    // static int8_t left_right = 0, left_right_last = 88;
+    // static int16_t aim_Left_Right_pulse = 0, aim_Up_Down_pulse = 0;
+    // static uint16_t record_delay = 0, aim_delay = 0, current_delay = 0;
     static uint8_t replay_flag = 0; // 当为1时候表示正在执行回放
-    static uint16_t record_T = 0;   // 每100个周期强制记录一次当前位置
+    // static uint16_t record_T = 0;   // 每100个周期强制记录一次当前位置
     // static uint8_t stalled_cnt_flag_LR = 0, stalled_cnt_flag_UD = 0;
     // static uint16_t Left_Right_pulse_Last = 8888, Up_Down_pulse_Last = 8888;
     // static int8_t stalled_protect_LR = 0, stalled_protect_UD = 0;
@@ -285,8 +285,8 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
     // uint16_t temp = 0;
     // uint8_t add_offset = 30; // 遥控器增加数值
     int16_t exp_offset_Up_Down = 0, exp_offset_Left_Right = 0;
-    u_int8_t play_dead_offset_motor = 100;
-    u_int8_t dead_offset_motor = play_dead_offset_motor - 2;
+    // u_int8_t play_dead_offset_motor = 100;
+    // u_int8_t dead_offset_motor = play_dead_offset_motor - 2;
     // uint8_t temp;
     uint16_t rcin_1 = (hal.rcin->read(1));
     uint16_t rcin_3 = (hal.rcin->read(3));
@@ -295,8 +295,8 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
 
     // gcs().send_text(MAV_SEVERITY_CRITICAL,"rcin(9):%d",hal.rcin->read(9));
 
-    exp_offset_Up_Down = -(aim_Up_Down_pulse - Up_Down_pulse); // 计算与目标偏差值
-    exp_offset_Left_Right = aim_Left_Right_pulse - Left_Right_pulse;
+    // exp_offset_Up_Down = -(aim_Up_Down_pulse - Up_Down_pulse); // 计算与目标偏差值
+    // exp_offset_Left_Right = aim_Left_Right_pulse - Left_Right_pulse;
     if (exp_offset_Up_Down > 3276) // 表示走原路了
         exp_offset_Up_Down -= 6553;
     else if (exp_offset_Up_Down < -3276)
@@ -331,45 +331,45 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
 
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Up_Down:%d", exp_offset_Up_Down);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "exp_offset_Left_Right:%d", exp_offset_Left_Right);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "Up_Down_pulse:%d", Up_Down_pulse);
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "Left_Right_pulse:%d", Left_Right_pulse);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "Up_Down_pulse:%d", Up_Down_pulse);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "Left_Right_pulse:%d", Left_Right_pulse);
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "左右的期望值为:%d", aim_Left_Right_pulse);
 
-    if (exp_offset_Up_Down > dead_offset_motor) // 当计算期望值为正数时候，启动按键上按钮
-    {
+    // if (exp_offset_Up_Down > dead_offset_motor) // 当计算期望值为正数时候，启动按键上按钮
+    // {
 
-        up_down = 1; // 表示当前正在向上
+    //     up_down = 1; // 表示当前正在向上
 
-    }
-    if (exp_offset_Up_Down < -dead_offset_motor) // 当计算期望值为负数时候，启动按键下按钮
-    {
+    // }
+    // if (exp_offset_Up_Down < -dead_offset_motor) // 当计算期望值为负数时候，启动按键下按钮
+    // {
 
-        up_down = -1; // 表示正在向下
+    //     up_down = -1; // 表示正在向下
 
-    }
-    else if (abs(exp_offset_Up_Down) < dead_offset_motor) // 重复发送4次
-    {
+    // }
+    // else if (abs(exp_offset_Up_Down) < dead_offset_motor) // 重复发送4次
+    // {
 
-        up_down = 0;
+    //     up_down = 0;
 
-    }
+    // }
 
-    if (exp_offset_Left_Right < -dead_offset_motor)
-    {
-        left_right = -1;
+    // if (exp_offset_Left_Right < -dead_offset_motor)
+    // {
+    //     left_right = -1;
 
-    }
-    else if (exp_offset_Left_Right > dead_offset_motor)
-    {
+    // }
+    // else if (exp_offset_Left_Right > dead_offset_motor)
+    // {
 
-        left_right = 1;
+    //     left_right = 1;
 
-    }
-    else if (abs(exp_offset_Left_Right) < dead_offset_motor) // 重复发送4次
-    {
-        left_right = 0;
+    // }
+    // else if (abs(exp_offset_Left_Right) < dead_offset_motor) // 重复发送4次
+    // {
+    //     left_right = 0;
 
-    }
+    // }
     //发送控制电机信号
     write_two(1,0,exp_offset_Up_Down,exp_offset_Left_Right);
 
@@ -426,101 +426,103 @@ void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很
 
     if ((hal.rcin->read(5)) > under_offset) // 表示正在录制动作
     {
-        // replay_flag = 2;
+        replay_flag = 2;
+        write_two(1,21,1,0);  //发送录制按键按下指令
+        // if ((left_right != 0 || up_down != 0) && (up_down_last == 88 && left_right_last == 88)) // 有动作时开始记录
+        // {
+        //     record_delay = 0;
+        //     current_delay = 0;
+        //     aim_delay = 0;
+        //     up_down_last = up_down;
+        //     left_right_last = left_right;
+        //     num_actions = 0;
+        //     record_T = 0;
+        //     // record_Left_Right_pulse = Left_Right_pulse;  //记录初始数值
+        //     // record_Up_Down_pulse =  Up_Down_pulse;
+        //     actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
+        // }
 
-        if ((left_right != 0 || up_down != 0) && (up_down_last == 88 && left_right_last == 88)) // 有动作时开始记录
-        {
-            record_delay = 0;
-            current_delay = 0;
-            aim_delay = 0;
-            up_down_last = up_down;
-            left_right_last = left_right;
-            num_actions = 0;
-            record_T = 0;
-            // record_Left_Right_pulse = Left_Right_pulse;  //记录初始数值
-            // record_Up_Down_pulse =  Up_Down_pulse;
-            actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
-        }
-
-        if (num_actions < MAX_ACTIONS) // 若指令满了，则停止记录
-        {
-            if ((up_down_last != 88 && left_right_last != 88)) // 过了初始化才能进入记录
-            {
-                if (up_down != up_down_last || left_right != left_right_last || record_T * DT_ms > 2000) // 当动作发生改变时，记录当前电机脉冲数值
-                {
-                    actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
-                    up_down_last = up_down;
-                    left_right_last = left_right;
-                    record_T = 0;
-                }
-                record_T++;
-            }
-        }
-        record_delay++; // 记录时间
+        // if (num_actions < MAX_ACTIONS) // 若指令满了，则停止记录
+        // {
+        //     if ((up_down_last != 88 && left_right_last != 88)) // 过了初始化才能进入记录
+        //     {
+        //         if (up_down != up_down_last || left_right != left_right_last || record_T * DT_ms > 2000) // 当动作发生改变时，记录当前电机脉冲数值
+        //         {
+        //             actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
+        //             up_down_last = up_down;
+        //             left_right_last = left_right;
+        //             record_T = 0;
+        //         }
+        //         record_T++;
+        //     }
+        // }
+        // record_delay++; // 记录时间
     }
     else if ((hal.rcin->read(5)) < low_offset)
     {
         replay_flag = 1;
-        if (action_index == 0) // 当执行第一次动作时，需要进行归位
-        {
-            aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
-            aim_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
-            aim_delay = actions[action_index].record_delay;
-            action_index++;
-            current_delay = 0;
-        }
-        else if ((abs(exp_offset_Left_Right) < play_dead_offset_motor && abs(exp_offset_Up_Down) < play_dead_offset_motor))
-        {
-            if(current_delay >= aim_delay)
-            {
-                if (action_index < num_actions)
-                {
-                    aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
-                    aim_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
-                    aim_delay = actions[action_index].record_delay;
-                    if (action_index == 1)  //当为第一个动作时候，不记录时间
-                    {
-                        current_delay = 0;
-                    }
-                    action_index++;
+        write_two(1, 21, 0, 1); // 发送回放按键按下指令
+        // if (action_index == 0) // 当执行第一次动作时，需要进行归位
+        // {
+        //     aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
+        //     aim_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
+        //     aim_delay = actions[action_index].record_delay;
+        //     action_index++;
+        //     current_delay = 0;
+        // }
+        // else if ((abs(exp_offset_Left_Right) < play_dead_offset_motor && abs(exp_offset_Up_Down) < play_dead_offset_motor))
+        // {
+        //     if(current_delay >= aim_delay)
+        //     {
+        //         if (action_index < num_actions)
+        //         {
+        //             aim_Left_Right_pulse = actions[action_index].record_Left_Right_pulse;
+        //             aim_Up_Down_pulse = actions[action_index].record_Up_Down_pulse;
+        //             aim_delay = actions[action_index].record_delay;
+        //             if (action_index == 1)  //当为第一个动作时候，不记录时间
+        //             {
+        //                 current_delay = 0;
+        //             }
+        //             action_index++;
                     
-                }
-                else
-                {
-                    action_index = 0; // 重复动作
-                    current_delay = 0;
-                    aim_delay = 0;
-                }
-            }
+        //         }
+        //         else
+        //         {
+        //             action_index = 0; // 重复动作
+        //             current_delay = 0;
+        //             aim_delay = 0;
+        //         }
+        //     }
   
-        }
-        current_delay++;
+        // }
+        // current_delay++;
     }
 
     else if (((hal.rcin->read(5)) > low_offset) && ((hal.rcin->read(5)) < under_offset))
     {
+        write_two(1, 21, 0, 0); // 发送清零指令
         // if(replay_flag == 2)  //表示从录制转到中间，需要记录一次
         // {
         //     actions[num_actions++] = Action(Left_Right_pulse, Up_Down_pulse, record_delay);
         //     replay_flag = 0;  //录制正式结束
         // }
-        if ((up_down_last != 88 && left_right_last != 88) || replay_flag == 1)
-        {
-            up_down_last = 88;
-            left_right_last = 88;
-            aim_Left_Right_pulse = Left_Right_pulse;
-            aim_Up_Down_pulse = Up_Down_pulse;
-            replay_flag = 0;
-            action_index = 0;
-        }
+        // if ((up_down_last != 88 && left_right_last != 88) || replay_flag == 1)
+        // {
+        //     up_down_last = 88;
+        //     left_right_last = 88;
+        //     aim_Left_Right_pulse = Left_Right_pulse;
+        //     aim_Up_Down_pulse = Up_Down_pulse;
+        //     replay_flag = 0;
+        //     action_index = 0;
+        // }
 
         // write_two(0x01,0x0010,0,0);
     }
 
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "通道11的数值:%d", hal.rcin->read(10));
-    time_samp += DT_ms;
-    if (time_samp == 6 * DT_ms)
-    {
-        time_samp = 0;
-    }
+    // time_samp += DT_ms;
+    // if (time_samp == 6 * DT_ms)
+    // {
+    //     time_samp = 0;
+    // }
 }
