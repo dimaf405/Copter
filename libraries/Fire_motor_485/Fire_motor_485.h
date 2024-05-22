@@ -3,6 +3,7 @@
 #define _FIRE_MOTOR_485_H_
 #include <FireFight/FireFight.h>
 #include <FireFight/FireFightCRC.h>
+#include <Fire_LED/Fire_LED.h>
 #define LIMIT( x,min,max ) ( ((x) <= (min)) ? (min) : ( ((x) > (max))? (max) : (x) ) )
 /*  本机波特率 19200
     本机485通道ID：0x02*/
@@ -11,7 +12,8 @@ class Fire_motor_485
 private:
     FireFightCRC CRC;
     FireFight FF;
-    void update_status();        //更新状态数值
+    Fire_LED FL;
+    void update_status(); // 更新状态数值
     uint16_t Left_motor = 100;   //左电机驱动
     uint16_t Right_motor = 101;  //右电机驱动
     void set_Reverse(uint8_t addressID);                 //设定电机反向
