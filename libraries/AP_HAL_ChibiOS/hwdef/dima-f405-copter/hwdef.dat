@@ -155,7 +155,7 @@ IMU BMI088 SPI:bmi088_a SPI:bmi088_g ROTATION_PITCH_180_YAW_270
 IMU Invensensev3 SPI:icm42688 ROTATION_NONE
 
 # filesystem setup on sdcard
-define HAL_OS_FATFS_IO 1
+define HAL_OS_FATFS_IO 0
 
 # setup for OSD
 define OSD_ENABLED 1
