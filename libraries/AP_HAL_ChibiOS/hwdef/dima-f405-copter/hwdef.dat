@@ -151,7 +151,7 @@ SPIDEV icm42688 SPI2 DEVID3 ICM42688_CS MODE3  1*MHZ  4*MHZ
 SPIDEV dataflash SPI3 DEVID4 FLASH_CS MODE3 500*KHZ 25*MHZ
 
 # filesystem setup on sdcard
-define HAL_OS_FATFS_IO 1
+define HAL_OS_FATFS_IO 0
 
 # setup for OSD
 define OSD_ENABLED 1
