@@ -142,7 +142,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(afs_fs_check, 10, 200, 129),
 #endif
 };
-
+//这是huayu项目文件
 void Rover::FireFight_parm()  //2秒一次
 {
     firefight_rover.parm_change();
