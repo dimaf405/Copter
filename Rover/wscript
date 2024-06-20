@@ -32,6 +32,7 @@ def build(bld):
             'Fire_motor_485',
             'Fire_RC',
             'Explosion_gases',
+            'Fire_Gimbal',
         ],
     )
 

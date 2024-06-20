@@ -1,9 +1,16 @@
 #include "Explosion_gases.h"
 
+void Explosion_gases::get_Thermal_imaging()
+{
+    read(Thermal_ID, 0x0100, 8);
+    Data_Receive_Prepare(Thermal_ID);
+}
+
+
 void Explosion_gases::read_Explosion_gasese()
 {
-    read(1,0,7);
-    Data_Receive_Prepare();
+    read(Gases_ID, 0, 7);
+    Data_Receive_Prepare(Gases_ID);
 }
 void Explosion_gases::read(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num) // 只需要填写寄存器ID和寄存器个数
 {
@@ -25,11 +32,20 @@ void Explosion_gases::read(uint8_t address_ID, uint16_t reg_adress, uint16_t reg
 
 void Explosion_gases::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
 {
-    gases.humidity = (data_buf[3] << 8) + data_buf[4]; // 00FE H(十六进制)=254=>湿度=25.4%RH
-    gases.temp     = (data_buf[5] << 8) + data_buf[6];     // 00AF H(十六进制)=175=>温度=17.5℃
-    gases.Co       = (data_buf[14] << 8) + data_buf[15];     // 00BD H(十六进制)=189=>CO=18.9ppm
+    if(data_buf[0]==Gases_ID)
+    {
+        gases.humidity = (data_buf[3] << 8) + data_buf[4]; // 00FE H(十六进制)=254=>湿度=25.4%RH
+        gases.temp = (data_buf[5] << 8) + data_buf[6];     // 00AF H(十六进制)=175=>温度=17.5℃
+        gases.Co = (data_buf[14] << 8) + data_buf[15];     // 00BD H(十六进制)=189=>CO=18.9ppm
+    }
+    else if (data_buf[0] == Thermal_ID)
+    {
+        Ther_ima.x = (data_buf[3] << 8) + data_buf[4];
+        Ther_ima.y = (data_buf[5] << 8) + data_buf[6];
+        Ther_ima.temp = (data_buf[9] << 8) + data_buf[10];
+    }
 }
-void Explosion_gases::Data_Receive_Prepare()   //使用串口4用于传感器数据采集
+void Explosion_gases::Data_Receive_Prepare(uint8_t device_ID)   //使用串口4用于传感器数据采集
 {
     uint8_t num = hal.serial(2)->available(); // 读取串口有多少个数据
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "num:%d", num);
@@ -42,7 +58,7 @@ void Explosion_gases::Data_Receive_Prepare()   //使用串口4用于传感器数
         num--;
         if (stat == 0)
         {
-            if (c == 0x01) // 如果等于发射器发送的帧头0x01：表示气体传感器 
+            if (c == device_ID) // 如果等于发射器发送的帧头0x01：表示气体传感器 
             {
                 data_buff[rece_len++] = c;
                 stat++;
