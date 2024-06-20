@@ -72,10 +72,10 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     //         Function name,          Hz,     us,
     SCHED_TASK(read_radio, 50, 200, 3),
     SCHED_TASK(ahrs_update, 400, 400, 6),
-    SCHED_TASK(Fire_RC_F,25,200,7),
+    SCHED_TASK(Fire_RC_F, 25, 200, 7),
     SCHED_TASK(read_rangefinders, 50, 200, 9),
     SCHED_TASK(FireFight_open, 200, 200, 10), // 消防炮功能函数，200HZ速度
-    // SCHED_TASK(Fire_CLED, 50, 100, 13), // LED功能函数，50HZ速度
+// SCHED_TASK(Fire_CLED, 50, 100, 13), // LED功能函数，50HZ速度
 
 #if AP_OPTICALFLOW_ENABLED
     SCHED_TASK_CLASS(AP_OpticalFlow, &rover.optflow, update, 200, 160, 13),
@@ -137,16 +137,22 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
 #endif
     SCHED_TASK(crash_check, 10, 200, 123),
     SCHED_TASK(cruise_learn_update, 50, 200, 126),
-    SCHED_TASK(FireFight_parm,0.1,200,127),     //消防炮参数任务
-    SCHED_TASK(Fire_CLED, 50, 100, 128), // LED功能函数，50HZ速度
+    SCHED_TASK(FireFight_parm, 0.1, 200, 127), // 消防炮参数任务
+    SCHED_TASK(Fire_CLED, 50, 100, 128),       // LED功能函数，50HZ速度
+    SCHED_TASK(Explosion_get_gases, 0.2, 200, 129),//气体检测，更新速率0.2HZ
 #if ADVANCED_FAILSAFE == ENABLED
-    SCHED_TASK(afs_fs_check, 10, 200, 129),
+        SCHED_TASK(afs_fs_check, 10, 200, 129),
 #endif
 };
 //这是huayu项目文件
 void Rover::FireFight_parm()  //2秒一次
 {
     firefight_rover.parm_change();
+}
+
+void Rover::Explosion_get_gases()
+{
+    E_g.read_Explosion_gasese();
 }
 
 void Rover::Fire_RC_F()
