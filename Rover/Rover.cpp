@@ -141,7 +141,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(Fire_CLED, 50, 100, 128),       // LED功能函数，50HZ速度
     SCHED_TASK(Explosion_get_gases, 0.2, 200, 129),//气体检测，更新速率0.2HZ
 #if ADVANCED_FAILSAFE == ENABLED
-        SCHED_TASK(afs_fs_check, 10, 200, 129),
+    SCHED_TASK(afs_fs_check, 10, 200, 129),
 #endif
 };
 //这是huayu项目文件
