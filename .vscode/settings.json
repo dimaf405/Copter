@@ -3,7 +3,8 @@
     "astyle.astylerc": "${workspaceFolder}/Tools/CodeStyle/astylerc",
     "files.associations": {
         "chrono": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "*.tcc": "cpp"
     },
     "cmake.sourceDirectory": "/home/dzd/ardupilot/modules/Micro-CDR/test/case"
 }

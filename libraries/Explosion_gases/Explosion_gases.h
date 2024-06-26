@@ -11,7 +11,8 @@ extern const AP_HAL::HAL &hal;
 
 struct Ex_Gases
 {
-    int16_t Co;    //外部一氧化碳含量
+    int16_t Co2;    //外部一氧化碳含量
+    int16_t NH3;
     int16_t temp; //设备温度
     int16_t humidity; //外部湿度
 

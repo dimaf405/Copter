@@ -193,7 +193,7 @@ void Rover::FireFight_open() // 每2毫秒执行一次
             firefight_rover.function_fire_fight(2);
         }
             
-        fire_motor_rover.motor_input(0, 0);
+        // fire_motor_rover.motor_input(0, 0);
     }
 }
 
