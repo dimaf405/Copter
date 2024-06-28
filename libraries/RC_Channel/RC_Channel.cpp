@@ -54,8 +54,9 @@ extern const AP_HAL::HAL& hal;
 #include <AP_VideoTX/AP_VideoTX.h>
 #include <AP_Torqeedo/AP_Torqeedo.h>
 #include <AP_Vehicle/AP_Vehicle_Type.h>
+#include <Fire_RC/Fire_RC.h>
 #define SWITCH_DEBOUNCE_TIME_MS  200
-
+Fire_RC F_RC;
 const AP_Param::GroupInfo RC_Channel::var_info[] = {
     // @Param: MIN
     // @DisplayName: RC min PWM
@@ -147,7 +148,7 @@ bool RC_Channel::update(void)
     if (has_override() && !rc().ignore_overrides()) {
         radio_in = override_value;
     } else if (rc().has_had_rc_receiver() && !rc().ignore_receiver()) {
-        radio_in = hal.rcin->read(ch_in);
+        radio_in = F_RC.Rc_In[ch_in]; // hal.rcin->read(ch_in);
     } else {
         return false;
     }

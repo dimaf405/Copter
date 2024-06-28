@@ -29,10 +29,11 @@ private:
     FireFightCRC CRC;
     
     void Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num);
+    RC_str RC;
     /* data */
 public:
     void Data_Receive_Prepare();
-    RC_str RC;
+    int16_t Rc_In[25];
     // Fire_RC(/* args */);
     // ~Fire_RC();
 };

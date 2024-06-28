@@ -18,29 +18,47 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         if ( data_buf[3] == 0x10)
         {
             RC.T0 = (data_buf[7] << 8) + data_buf[8];   //云台
+            Rc_In[12] = RC.T0 * 1000 + 1000;
             RC.T2 = (data_buf[11] << 8) + data_buf[12];   //喷雾/聚焦
+            Rc_In[13] = RC.T2 * 1000 + 1000;
             RC.T4 = (data_buf[15] << 8) + data_buf[16];   //车灯开关
+            Rc_In[14] = RC.T4 * 1000 + 1000;
             RC.T7 = (data_buf[21] << 8) + data_buf[22];   //预留
+            Rc_In[15] = RC.T7 * 1000 + 1000;
             RC.T8 = (data_buf[23] << 8) + data_buf[24];   //预留
+            Rc_In[16] = RC.T8 * 1000 + 1000;
             RC.T9 = (data_buf[25] << 8) + data_buf[26];   //跟随遥控
+            Rc_In[17] = RC.T9 * 1000 + 1000;
             RC.T10 = (data_buf[27] << 8) + data_buf[28];  //模式切换
-
+            Rc_In[18] = RC.T10 * 1000 + 1000;
             /* code */
         }
         else if(data_buf[3] == 0x50)
         {
             RC.P0_LR = data_buf[7];
+            Rc_In[0] = data_buf[7] * 19.53125f - 1000;
             RC.P0_UD = data_buf[8];
+            Rc_In[1] = data_buf[8] * 19.53125f - 1000;
             RC.P1_LR = data_buf[9];
+            Rc_In[2] = data_buf[9] * 19.53125f - 1000;
             RC.P1_UD = data_buf[10];
+            Rc_In[3] = data_buf[10] * 19.53125f - 1000;
             RC.P2_LR = data_buf[11];
+            Rc_In[4] = data_buf[11] * 19.53125f - 1000;
             RC.P2_UD = data_buf[12];
+            Rc_In[5] = data_buf[12] * 19.53125f - 1000;
             RC.P3_LR = data_buf[13];
+            Rc_In[6] = data_buf[13] * 19.53125f - 1000;
             RC.P3_UD = data_buf[14];
+            Rc_In[7] = data_buf[14] * 19.53125f - 1000;
             RC.P4_LR = data_buf[15];
+            Rc_In[8] = data_buf[15] * 19.53125f - 1000;
             RC.P4_UD = data_buf[16];
+            Rc_In[9] = data_buf[16] * 19.53125f - 1000;
             RC.P5_LR = data_buf[17];
+            Rc_In[10] = data_buf[17] * 19.53125f - 1000;
             RC.P5_UD = data_buf[18];
+            Rc_In[11] = data_buf[18] * 19.53125f - 1000;
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P0_LR:%d", RC.P0_LR);
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P0_UD:%d", RC.P0_UD);
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P1_LR:%d", RC.P1_LR);
