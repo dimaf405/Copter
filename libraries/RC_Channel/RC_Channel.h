@@ -6,6 +6,7 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/Bitmask.h>
+#include <Fire_RC/Fire_RC.h>
 
 #ifndef AP_RC_CHANNEL_AUX_FUNCTION_STRINGS_ENABLED
 #define AP_RC_CHANNEL_AUX_FUNCTION_STRINGS_ENABLED 1
@@ -17,6 +18,7 @@
 /// @brief	Object managing one RC channel
 class RC_Channel {
 public:
+    
     friend class SRV_Channels;
     friend class RC_Channels;
     // Constructor
@@ -364,7 +366,6 @@ protected:
 
 
 private:
-
     // pwm is stored here
     int16_t     radio_in;
 
@@ -427,6 +428,7 @@ class RC_Channels {
 public:
     friend class SRV_Channels;
     friend class RC_Channel;
+    Fire_RC F_RC;
     // constructor
     RC_Channels(void);
 

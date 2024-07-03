@@ -45,8 +45,8 @@
 #include <FireFight/FireFight.h>           //添加消防炮头文件
 #include <Fire_LED/Fire_LED.h>             //添加灯的头文件
 #include <Fire_motor_485/Fire_motor_485.h> //添加电机驱动头文件
-#include <Fire_RC/Fire_RC.h>               //添加遥控器头文件
-#include <Explosion_gases/Explosion_gases.h>  //添加气体检测头文件
+// #include <Fire_RC/Fire_RC.h>               //添加遥控器头文件
+// #include <Explosion_gases/Explosion_gases.h>  //添加气体检测头文件
 // Configuration
 #include "defines.h"
 #include "config.h"
@@ -113,8 +113,8 @@ private:
     FireFight firefight_rover;
     Fire_LED fire_led;
     Fire_motor_485 fire_motor_rover;
-    Fire_RC F_RC;
-    Explosion_gases E_g;
+    // Fire_RC F_RC;
+    // Explosion_gases E_g;
     // must be the first AP_Param variable declared to ensure its
     // constructor runs before the constructors of the other AP_Param
     // variables
@@ -283,10 +283,10 @@ private:
     void Fire_motor(); // 消防车电机驱动
 
     void Fire_CLED(); // 灯驱动
-    void Fire_RC_F();  //遥控器函数运行周期25hz
+    // void Fire_RC_F();  //遥控器函数运行周期25hz
 
     void FireFight_parm();  //参数储存
-    void Explosion_get_gases();  //获取有害气体的量
+    // void Explosion_get_gases();  //获取有害气体的量
 
     void stats_update();
     void ahrs_update();

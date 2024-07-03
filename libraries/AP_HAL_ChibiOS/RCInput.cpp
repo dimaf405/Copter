@@ -19,12 +19,14 @@
 #include "RCInput.h"
 #include "hal.h"
 #include "hwdef/common/ppm.h"
+
+// Fire_RC F_RC;
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
 
 #if HAL_WITH_IO_MCU
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_IOMCU/AP_IOMCU.h>
-extern AP_IOMCU iomcu;
+    extern AP_IOMCU iomcu;
 #endif
 
 #include <AP_Math/AP_Math.h>
@@ -110,7 +112,7 @@ uint16_t RCInput::read(uint8_t channel)
     uint16_t v;
     {
         WITH_SEMAPHORE(rcin_mutex);
-        v = _rc_values[channel];
+        v = _rc_values[channel]; //F_RC.Rc_In[channel];
     }
 #if HAL_RCINPUT_WITH_AP_RADIO
     if (radio && channel == 0) {

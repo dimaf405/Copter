@@ -1,5 +1,5 @@
 #include "Rover.h"
-
+#include <GCS_MAVLink/GCS.h> //地面站
 /*
   allow for runtime change of control channel ordering
  */
@@ -127,12 +127,14 @@ void Rover::rudder_arm_disarm_check()
 
 void Rover::read_radio()
 {
-    if (!rc().read_input()) {
-        // check if we lost RC link
-        radio_failsafe_check(channel_throttle->get_radio_in());
-        return;
-    }
-
+    // if (!rc().read_input()) {
+    //     // check if we lost RC link
+    //     radio_failsafe_check(channel_throttle->get_radio_in());
+    //     // gcs().send_text(MAV_SEVERITY_CRITICAL, "channel_throttle->get_radio_in():%d", channel_throttle->get_radio_in());
+    //     return;
+    // }
+    rc().read_input();
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "channel_throttle->get_radio_in():%d", channel_throttle->get_radio_in());
     failsafe.last_valid_rc_ms = AP_HAL::millis();
     // check that RC value are valid
     radio_failsafe_check(channel_throttle->get_radio_in());
