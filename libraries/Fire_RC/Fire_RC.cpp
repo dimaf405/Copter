@@ -3,6 +3,14 @@
 int16_t Rc_In[25];
 void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
 {
+    uint8_t send_buff[255];
+    uint8_t cnt = 0;
+    // int16_t zero = 1234;
+    // uint32_t GPS = 12345678;
+    uint16_t crc = 0;
+    volatile int16_t temp_16;
+    volatile int32_t temp_32;
+
     // uint16_t register_add = 0;
     // uint16_t register_num = 0;
     // int16_t write_data = 0;
@@ -11,7 +19,320 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
     {
     case 0x03: 
         E_g.read_Explosion_gasese();
+        send_buff[cnt++] = 0x4D; //遥控器ID
+        send_buff[cnt++] = 0x03; // 返回功能位
+        send_buff[cnt++] = 224; // 返回字节数
+        temp_16 = 1234;
+        send_buff[cnt++] = BYTE1(temp_16);   // 右电机温度H
+        send_buff[cnt++] = BYTE0(temp_16);   // 右电机温度L
+        temp_16 = 1234;
+        send_buff[cnt++] = BYTE1(temp_16); // 左电机温度H
+        send_buff[cnt++] = BYTE0(temp_16); // 左电机温度L
+        temp_16 = E_g.gases.temp;
+        send_buff[cnt++] = BYTE1(temp_16);        // 壳体温度H
+        send_buff[cnt++] = BYTE0(temp_16);        // 壳体温度L
+        temp_16 = E_g.gases.humidity;
+        send_buff[cnt++] = BYTE1(temp_16);            // 壳体湿度H
+        send_buff[cnt++] = BYTE0(temp_16);            // 壳体湿度L
+        temp_16 = 1234;
+        send_buff[cnt++] = BYTE1(temp_16);         // 氧气H
+        send_buff[cnt++] = BYTE0(temp_16);      // 氧气L
+        temp_16 = 1234;
+        send_buff[cnt++] = BYTE1(temp_16);      // 一氧化碳H
+        send_buff[cnt++] = BYTE0(temp_16);      // 一氧化碳L
+        temp_16 = E_g.gases.Co2;
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "E_g.gases.Co2:%d", E_g.gases.Co2);
+        send_buff[cnt++] = BYTE1(temp_16);        // 二氧化碳H
+        send_buff[cnt++] = BYTE0(temp_16);        // 二氧化碳L
         
+        send_buff[cnt++] = BYTE1(temp_16);                  // 硫化氢H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 硫化氢L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 氢气H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 氢气L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 甲烷H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 甲烷L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 二氧化氮H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 二氧化氮L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 二氧化硫H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 二氧化硫L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 甲苯H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 甲苯L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 氰化氢H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 氰化氢L
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none1
+        send_buff[cnt++] = BYTE0(temp_16);                  // none1
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none2
+        send_buff[cnt++] = BYTE0(temp_16);                  // none2
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none3
+        send_buff[cnt++] = BYTE0(temp_16);                  // none3
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none4
+        send_buff[cnt++] = BYTE0(temp_16);                  // none4
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none5
+        send_buff[cnt++] = BYTE0(temp_16);                  // none5
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none6
+        send_buff[cnt++] = BYTE0(temp_16);                  // none6
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none7
+        send_buff[cnt++] = BYTE0(temp_16);                  // none7
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none8
+        send_buff[cnt++] = BYTE0(temp_16);                  // none8
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none9
+        send_buff[cnt++] = BYTE0(temp_16);                  // none9
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none10
+        send_buff[cnt++] = BYTE0(temp_16);                  // none10
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // none11
+        send_buff[cnt++] = BYTE0(temp_16);                  // none11
+        
+        send_buff[cnt++] = BYTE1(temp_16);                  // 可燃气体H
+        send_buff[cnt++] = BYTE0(temp_16);                  // 可燃气体L
+        temp_16 = E_g.gases.NH3;
+        send_buff[cnt++] = BYTE1(temp_16);                        // 氨气H
+        send_buff[cnt++] = BYTE0(temp_16);                        // 氨气L
+        temp_16 = 1234;
+        send_buff[cnt++] = BYTE1(temp_16);                     // none12
+        send_buff[cnt++] = BYTE0(temp_16);                     // none12
+        temp_32 = 12345678;
+        send_buff[cnt++] = BYTE3(temp_32 );                     // temp_32经度
+        send_buff[cnt++] = BYTE2(temp_32 );                     // temp_32经度
+        send_buff[cnt++] = BYTE1(temp_32 );                     // temp_32经度
+        send_buff[cnt++] = BYTE0(temp_32 );                     // temp_32经度
+        send_buff[cnt++] = BYTE3(temp_32 );                     // temp_32维度
+        send_buff[cnt++] = BYTE2(temp_32 );                     // temp_32维度
+        send_buff[cnt++] = BYTE1(temp_32 );                     // temp_32维度
+        send_buff[cnt++] = BYTE0(temp_32 );                     // temp_32维度
+        send_buff[cnt++] = BYTE3(temp_32 );                     // temp_32海拔
+        send_buff[cnt++] = BYTE2(temp_32 );                     // temp_32海拔
+        send_buff[cnt++] = BYTE1(temp_32 );                     // temp_32海拔
+        send_buff[cnt++] = BYTE0(temp_32 );                     // temp_32海拔
+        send_buff[cnt++] = BYTE1(temp_16);                         // temp_32航向
+        send_buff[cnt++] = BYTE0(temp_16);                         // temp_32航向
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // temp_32状态
+        send_buff[cnt++] = BYTE0(temp_16);                         // temp_32状态
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 导航状态
+        send_buff[cnt++] = BYTE0(temp_16);                         // 导航状态
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 工况状态
+        send_buff[cnt++] = BYTE0(temp_16);                         // 工况状态
+       
+        RC.F8 > 0 ? temp_16 = 0: temp_16 = 1;
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.F8:%d", RC.F8);
+        send_buff[cnt++] = BYTE1(temp_16);                         // 雷达开关
+        send_buff[cnt++] = BYTE0(temp_16);    
+        temp_16 = 1234;                     // 雷达开关
+        send_buff[cnt++] = BYTE1(temp_16);                         // none13
+        send_buff[cnt++] = BYTE0(temp_16);                         // none13
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体pitch
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体pitch
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体roll
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体roll
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体yaw
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体yaw
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none14
+        send_buff[cnt++] = BYTE0(temp_16);                         // none14
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 水炮模式
+        send_buff[cnt++] = BYTE0(temp_16);                         // 水炮模式
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 供水水压
+        send_buff[cnt++] = BYTE0(temp_16);                         // 供水水压
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 供水流量
+        send_buff[cnt++] = BYTE0(temp_16);                         // 供水流量
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 气体探测高度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 气体探测高度
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 报警音频
+        send_buff[cnt++] = BYTE0(temp_16);                         // 报警音频
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none15
+        send_buff[cnt++] = BYTE0(temp_16);                         // none15
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none16
+        send_buff[cnt++] = BYTE0(temp_16);                         // none16
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none17
+        send_buff[cnt++] = BYTE0(temp_16);                         // none17
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 视觉云台水平角度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 视觉云台水平角度
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 视觉云台pitch数值
+        send_buff[cnt++] = BYTE0(temp_16);                         // 视觉云台pitch数值
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 水炮水平角度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 水炮水平角度
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 水炮pitch
+        send_buff[cnt++] = BYTE0(temp_16);                         // 水炮pitch
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none18
+        send_buff[cnt++] = BYTE0(temp_16);                         // none18
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none19
+        send_buff[cnt++] = BYTE0(temp_16);                         // none19
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none20
+        send_buff[cnt++] = BYTE0(temp_16);                         // none20
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none21
+        send_buff[cnt++] = BYTE0(temp_16);                         // none21
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体ID
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体ID
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体状态
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体状态
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体报警码
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体报警码
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体电量
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体电量
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左电机转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左电机转速
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右电机转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右电机转速
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体放电电流
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体放电电流
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体充电电流
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体充电电流
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 车体电池电压
+        send_buff[cnt++] = BYTE0(temp_16);                         // 车体电池电压
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 回零设置
+        send_buff[cnt++] = BYTE0(temp_16);                         // 回零设置
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none22
+        send_buff[cnt++] = BYTE0(temp_16);                         // none22
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // none23
+        send_buff[cnt++] = BYTE0(temp_16);                         // none23
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左前电流*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左前电流*0.1
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左前电压*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左前电压*0.1
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左前转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左前转速
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左前温度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左前温度
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右前电流*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右前电流*0.1
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右前电压*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右前电压*0.1
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右前转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右前转速
+        
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右前温度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右前温度
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左后电流*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左后电流*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左后电压*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左后电压*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左后转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左后转速
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左后温度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左后温度
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右后电流*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右后电流*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右后电压*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右后电压*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右后转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右后转速
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右后温度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右后温度
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左行走电流*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左行走电流*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左行走电压*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左行走电压*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左行走转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左行走转速
+        send_buff[cnt++] = BYTE1(temp_16);                         // 左行走温度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 左行走温度
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右行走电流*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右行走电流*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右行走电压*0.1
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右行走电压*0.1
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右行走转速
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右行走转速
+        send_buff[cnt++] = BYTE1(temp_16);                         // 右行走温度
+        send_buff[cnt++] = BYTE0(temp_16);                         // 右行走温度
+        send_buff[cnt++] = BYTE3(temp_32);                          // 左前姿态电机报警码S96-97
+        send_buff[cnt++] = BYTE2(temp_32);                          // 左前姿态电机报警码S96-97
+        send_buff[cnt++] = BYTE1(temp_32);                          // 左前姿态电机报警码S96-97
+        send_buff[cnt++] = BYTE0(temp_32);                          // 左前姿态电机报警码S96-97
+        send_buff[cnt++] = BYTE3(temp_32);                          // 右前姿态电机报警码S98-99
+        send_buff[cnt++] = BYTE2(temp_32);                          // 右前姿态电机报警码S98-99
+        send_buff[cnt++] = BYTE1(temp_32);                          // 右前姿态电机报警码S98-99
+        send_buff[cnt++] = BYTE0(temp_32);                          // 右前姿态电机报警码S98-99
+        send_buff[cnt++] = BYTE3(temp_32);                          // 左后姿态电机报警码S100-101
+        send_buff[cnt++] = BYTE2(temp_32);                          // 左后姿态电机报警码S100-101
+        send_buff[cnt++] = BYTE1(temp_32);                          // 左后姿态电机报警码S100-101
+        send_buff[cnt++] = BYTE0(temp_32);                          // 左后姿态电机报警码S100-101
+        send_buff[cnt++] = BYTE3(temp_32);                          // 右后姿态电机报警码S102-103
+        send_buff[cnt++] = BYTE2(temp_32);                          // 右后姿态电机报警码S102-103
+        send_buff[cnt++] = BYTE1(temp_32);                          // 右后姿态电机报警码S102-103
+        send_buff[cnt++] = BYTE0(temp_32);                          // 右后姿态电机报警码S102-103
+        send_buff[cnt++] = BYTE3(temp_32);                          // 左行走电机报警码S104-105
+        send_buff[cnt++] = BYTE2(temp_32);                          // 左行走电机报警码S104-105
+        send_buff[cnt++] = BYTE1(temp_32);                          // 左行走电机报警码S104-105
+        send_buff[cnt++] = BYTE0(temp_32);                          // 左行走电机报警码S104-105
+        send_buff[cnt++] = BYTE3(temp_32);                          // 右行走电机报警码S106-107
+        send_buff[cnt++] = BYTE2(temp_32);                          // 右行走电机报警码S106-107
+        send_buff[cnt++] = BYTE1(temp_32);                          // 右行走电机报警码S106-107
+        send_buff[cnt++] = BYTE0(temp_32);                          // 右行走电机报警码S106-107
+
+        send_buff[cnt++] = BYTE1(temp_16); // none24
+        send_buff[cnt++] = BYTE0(temp_16); // none24
+
+        send_buff[cnt++] = BYTE1(temp_16); // none25
+        send_buff[cnt++] = BYTE0(temp_16); // none25
+
+        send_buff[cnt++] = BYTE1(temp_16); // none26
+        send_buff[cnt++] = BYTE0(temp_16); // none26
+
+        send_buff[cnt++] = BYTE1(temp_16); // none27
+        send_buff[cnt++] = BYTE0(temp_16); // none27
+
+        crc = CRC.Funct_CRC16(send_buff, cnt);                        // 官方给的CRC校验
+        send_buff[cnt++] = BYTE0(crc);
+        send_buff[cnt++] = BYTE1(crc);
+        hal.serial(6)->write(send_buff, cnt);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "cnt:%d", cnt);
         // 如果是读寄存器则执行以下函数
         // register_add = data_buf[2] << 8 | data_buf[3];
         // register_num = data_buf[4] << 8 | data_buf[5];
@@ -22,21 +343,22 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         if ( data_buf[3] == 0x10)
         {
             RC.T0 = (data_buf[7] << 8) + data_buf[8];   //云台
-            Rc_In[12] = RC.T0 * 1000 + 1000;
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.T0:%d", RC.T0);
+            Rc_In[12] = RC.T0 * 500 + 1000;
+            // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[12]:%d", Rc_In[12]);
             RC.T2 = (data_buf[11] << 8) + data_buf[12];   //喷雾/聚焦
-            Rc_In[13] = RC.T2 * 1000 + 1000;
+            Rc_In[13] = RC.T2 * 500 + 1000;
             RC.T4 = (data_buf[15] << 8) + data_buf[16];   //车灯开关
             Rc_In[14] = RC.T4 * 1000 + 1000;
             RC.T7 = (data_buf[21] << 8) + data_buf[22];   //预留
-            Rc_In[15] = RC.T7 * 1000 + 1000;
+            Rc_In[15] = RC.T7 * 500 + 1000;
             RC.T8 = (data_buf[23] << 8) + data_buf[24];   //预留
-            Rc_In[16] = RC.T8 * 1000 + 1000;
+            Rc_In[16] = RC.T8 * 500 + 1000;
             RC.T9 = (data_buf[25] << 8) + data_buf[26];   //跟随遥控
             Rc_In[17] = RC.T9 * 1000 + 1000;
             RC.T10 = (data_buf[27] << 8) + data_buf[28];  //模式切换
-            gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.T10:%d", RC.T10);
-            Rc_In[18] = RC.T10 * 1000 + 1000;
+            Rc_In[18] = RC.T10 * 142 + 858;
+            (Rc_In[18] > 2000) ? Rc_In[18] = 2000 : Rc_In[18] = Rc_In[18];
+            // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[18]:%d", Rc_In[18]);
             /* code */
         }
         else if(data_buf[3] == 0x50)
@@ -67,18 +389,6 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
             Rc_In[10] = data_buf[17] * 3.9063f + 1000;
             RC.P5_UD = data_buf[18];
             Rc_In[11] = data_buf[18] * 3.9063f + 1000;
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P0_LR:%d", RC.P0_LR);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P0_UD:%d", RC.P0_UD);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P1_LR:%d", RC.P1_LR);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P1_UD:%d", RC.P1_UD);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P2_LR:%d", RC.P2_LR);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P2_UD:%d", RC.P2_UD);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P3_LR:%d", RC.P3_LR);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P3_UD:%d", RC.P3_UD);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P4_LR:%d", RC.P4_LR);
-            // gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P4_UD:%d", RC.P4_UD);
-        //     gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P5_LR:%d", RC.P5_LR);
-        //     gcs().send_text(MAV_SEVERITY_CRITICAL, "RC.P5_UD:%d", RC.P5_UD);
         }
         break;
     case 0x0F:

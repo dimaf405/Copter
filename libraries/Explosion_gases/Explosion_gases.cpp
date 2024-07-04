@@ -38,10 +38,10 @@ void Explosion_gases::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         gases.temp = (data_buf[5] << 8) + data_buf[6];     // 00AF H(十六进制)=175=>温度=17.5℃   地址1
         gases.Co2 = (data_buf[13] << 8) + data_buf[14];     // 00BD H(十六进制)=189=>CO=18.9ppm  地址5
         gases.NH3 = (data_buf[15] << 8) + data_buf[16];     // 00BD H(十六进制)=189=>CO=18.9ppm  地址6
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.humidity:%d", gases.humidity);
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.temp:%d", gases.temp);
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.Co2:%d", gases.Co2);
-        gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.NH3:%d", gases.NH3);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.humidity:%d", gases.humidity);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.temp:%d", gases.temp);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.Co2:%d", gases.Co2);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "gases.NH3:%d", gases.NH3);
     }
     else if (data_buf[0] == Thermal_ID)
     {
