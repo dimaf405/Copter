@@ -45,6 +45,7 @@
 #include <FireFight/FireFight.h>           //添加消防炮头文件
 #include <Fire_LED/Fire_LED.h>             //添加灯的头文件
 #include <Fire_motor_485/Fire_motor_485.h> //添加电机驱动头文件
+#include <Fire_Gimbal/Fire_Gimbal.h>       //添加云台驱动头文件
 // #include <Fire_RC/Fire_RC.h>               //添加遥控器头文件
 // #include <Explosion_gases/Explosion_gases.h>  //添加气体检测头文件
 // Configuration
@@ -113,6 +114,7 @@ private:
     FireFight firefight_rover;
     Fire_LED fire_led;
     Fire_motor_485 fire_motor_rover;
+    Fire_Gimbal Fire_Gim;
     // Fire_RC F_RC;
     // Explosion_gases E_g;
     // must be the first AP_Param variable declared to ensure its

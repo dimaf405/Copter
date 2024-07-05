@@ -425,7 +425,7 @@ void Fire_RC::Data_Receive_Prepare()
         num--;
         if (stat == 0)
         {
-            if (c == 0x4D)  //如果等于发射器发送的枕头0x4D,则记录
+            if (c == 0x4D)  //如果等于发射器发送的帧头0x4D,则记录
             {
                 data_buff[rece_len++] = c;
                 stat++;
