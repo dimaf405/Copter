@@ -289,6 +289,7 @@ private:
 
     void FireFight_parm();  //参数储存
     // void Explosion_get_gases();  //获取有害气体的量
+    void Fire_Gimbal_Co();  //云台控制相关程序
 
     void stats_update();
     void ahrs_update();

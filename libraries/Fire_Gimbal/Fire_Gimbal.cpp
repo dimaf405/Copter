@@ -1,4 +1,5 @@
 #include "Fire_Gimbal.h"
+Gimbal_str Gimbal;
 
 void Fire_Gimbal::inc_multiple()
 {
@@ -91,13 +92,13 @@ void Fire_Gimbal::save_loc()
     hal.serial(4)->write(data_to_send, cnt);
 }
 
-void Fire_Gimbal::void control_pitch(int16_t pitch)
+void Fire_Gimbal::control_pitch(int16_t pitch)
 {
 
     uint8_t data_to_send[7] = {0xFF, 0x01, 0x00, 0x4D, 0x00, 0x00, 0x00};
     uint8_t cnt = 7;
     uint16_t output_angle = 0;
-    uint8_t sum;
+    uint8_t sum = 0;
     (pitch >= 0)?(output_angle=360-pitch):(output_angle = -pitch);
     data_to_send[4] = BYTE1(output_angle);
     data_to_send[5] = BYTE0(output_angle);
@@ -110,12 +111,12 @@ void Fire_Gimbal::void control_pitch(int16_t pitch)
     hal.serial(4)->write(data_to_send, cnt);
 }
 
-void Fire_Gimbal::oid control_roll(int16_t roll)
+void Fire_Gimbal::control_roll(int16_t roll)
 {
     uint8_t data_to_send[7] = {0xFF, 0x01, 0x00, 0x4B, 0x00, 0x00, 0x00};
     uint8_t cnt = 7;
     uint16_t output_angle = roll;
-    uint8_t sum;
+    uint8_t sum = 0;
     data_to_send[4] = BYTE1(output_angle);
     data_to_send[5] = BYTE0(output_angle);
     for (uint8_t i = 0; i < 6; i++)
@@ -143,7 +144,7 @@ void Fire_Gimbal::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
     }
     
 }
-void Fire_Gimbal::void Data_Receive_Prepare()
+void Fire_Gimbal::Data_Receive_Prepare()
 {
     uint8_t num = hal.serial(4)->available(); // 读取串口有多少个数据
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "num:%d", num);
@@ -208,4 +209,44 @@ void Fire_Gimbal::void Data_Receive_Prepare()
             stat = 0;
         }
     }
+}
+
+void Fire_Gimbal::control_by_RC()
+{
+    static uint8_t i = 0;
+    static float pit = 0;
+    static float roll = 0;
+    if (abs(Rc_In[5] - 1500) > 100 )
+    {
+        pit += (Rc_In[5] - 1500)*0.005f;
+    }
+
+    if (abs(Rc_In[4] - 1500) > 100)
+    {
+        roll += (Rc_In[4] - 1500) * 0.005f;
+    }
+
+    if (abs(Rc_In[9] - 1500) > 100)
+    {
+        ((Rc_In[9] - 1500) > 0) ? inc_multiple() : red_multiple();
+    }
+
+    if (abs(Rc_In[8] - 1500) > 100)
+    {
+        ((Rc_In[9] - 1500) > 0) ? inc_zoom() : red_zoom();
+    }
+
+    if ((abs(Rc_In[5] - 1500) < 100))
+    {
+        /* code */
+    }
+    
+    // if( i == 0)
+    control_pitch((int16_t)pit);
+        // i++;
+    // else
+    control_roll((int16_t)roll);
+        // i = 0;
+    
+    
 }

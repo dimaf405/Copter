@@ -76,7 +76,7 @@ const AP_Scheduler::Task Rover::scheduler_tasks[] = {
     SCHED_TASK(read_rangefinders, 50, 200, 9),
     SCHED_TASK(FireFight_open, 200, 200, 10), // 消防炮功能函数，200HZ速度
 // SCHED_TASK(Fire_CLED, 50, 100, 13), // LED功能函数，50HZ速度
-
+    SCHED_TASK(Fire_Gimbal_Co,20,400,11),
 #if AP_OPTICALFLOW_ENABLED
     SCHED_TASK_CLASS(AP_OpticalFlow, &rover.optflow, update, 200, 160, 13),
 #endif
@@ -154,7 +154,20 @@ void Rover::FireFight_parm()  //2秒一次
 // {
 //     E_g.read_Explosion_gasese();
 // }
-
+void Rover::Fire_Gimbal_Co()  //云台控制程序20HZ
+{
+    static uint8_t i = 0;
+    i++;
+    if (i >= 10)
+    {
+        Fire_Gim.Data_Receive_Prepare();//每500ms读取一次云台角度数值反馈
+        i = 0;
+        /* code */
+    }
+    
+    
+    
+}
 // void Rover::Fire_RC_F()
 // {
 //     // static uint8_t i = 0;

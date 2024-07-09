@@ -5,7 +5,8 @@
         "chrono": "cpp",
         "complex": "cpp",
         "*.tcc": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "thread": "cpp"
     },
     "cmake.sourceDirectory": "/home/dzd/ardupilot/modules/Micro-CDR/test/case",
     "C_Cpp.errorSquiggles": "disabled"
