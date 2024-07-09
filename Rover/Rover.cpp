@@ -201,8 +201,9 @@ void Rover::FireFight_open() // 每2毫秒执行一次
         fire_led.stop_motor();
         if (stop_button == 0)
         {
-            firefight_rover.write_two(0x01, 0x0010, 0, 0);   //摇摆电机锁定
-            firefight_rover.write_two(0x01, 0x0000, 0, 0);   //柱大雾锁定
+            firefight_rover.write_two(0x01, 0x0010, 0, 0);   //柱雾电机锁定
+            firefight_rover.write_two(0x01, 12, 0, 0);       //上下电机锁定
+            firefight_rover.write_two(0x01, 14, 0, 0);       //左右电机锁定
         }
         else
         {

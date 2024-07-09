@@ -2,7 +2,7 @@
 #ifndef _Fire_Gimbal_h_
 #define _Fore_Gimbal_h_
 #include <FireFight/FireFightCRC.h>
-
+#include <RC_Channel/RC_Channel.h>
 #define BYTE0(dwTemp) (*((char *)(&dwTemp)))
 #define BYTE1(dwTemp) (*((char *)(&dwTemp) + 1))
 #define BYTE2(dwTemp) (*((char *)(&dwTemp) + 2))

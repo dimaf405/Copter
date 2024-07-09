@@ -343,10 +343,10 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         if ( data_buf[3] == 0x10)
         {
             RC.T0 = (data_buf[7] << 8) + data_buf[8];   //云台
-            Rc_In[12] = RC.T0 * 500 + 1000;
+            // Rc_In[12] = RC.T0 * 500 + 1000;
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[12]:%d", Rc_In[12]);
             RC.T2 = (data_buf[11] << 8) + data_buf[12];   //喷雾/聚焦
-            Rc_In[13] = RC.T2 * 500 + 1000;
+            Rc_In[13] = RC.T2 * 500 + 1500;
             RC.T4 = (data_buf[15] << 8) + data_buf[16];   //车灯开关
             Rc_In[14] = RC.T4 * 1000 + 1000;
             RC.T7 = (data_buf[21] << 8) + data_buf[22];   //预留
@@ -393,6 +393,7 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         break;
     case 0x0F:
         RC.F0 = (data_buf[7] & 0x01);
+        Rc_In[12] = -RC.F0 * 1000 + 2000;
         RC.F5 = (uint8_t)((data_buf[7] & 0x20) >> 5);
         RC.F8 = (uint8_t)((data_buf[8] & 0x01) >> 0);
         RC.F18 = (uint8_t)((data_buf[9] & 0x02) >> 1);
