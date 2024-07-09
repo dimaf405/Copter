@@ -213,9 +213,10 @@ void Fire_Gimbal::Data_Receive_Prepare()
 
 void Fire_Gimbal::control_by_RC()
 {
-    static uint8_t i = 0;
+    static uint8_t i = 0,multiple = 0,zoom = 0;
     static float pit = 0;
     static float roll = 0;
+    
     if (abs(Rc_In[5] - 1500) > 100 )
     {
         pit += (Rc_In[5] - 1500)*0.005f;
@@ -228,25 +229,93 @@ void Fire_Gimbal::control_by_RC()
 
     if (abs(Rc_In[9] - 1500) > 100)
     {
-        ((Rc_In[9] - 1500) > 0) ? inc_multiple() : red_multiple();
+        ((Rc_In[9] - 1500) > 0) ? multiple = 1 : multiple = 2;
+    }
+    else
+    {
+        if (multiple != 0/* condition */)
+        {
+            multiple = 88; //表示需要发送一次停止信息
+            /* code */
+        }
+        
     }
 
     if (abs(Rc_In[8] - 1500) > 100)
     {
-        ((Rc_In[9] - 1500) > 0) ? inc_zoom() : red_zoom();
+        ((Rc_In[9] - 1500) > 0) ? zoom = 1 : zoom = 2;
     }
-
+    else
+    {
+        if (zoom != 0)
+        {
+            zoom = 88;
+        }
+        
+    }
     if ((abs(Rc_In[5] - 1500) < 100))
     {
         /* code */
     }
     
-    // if( i == 0)
-    control_pitch((int16_t)pit);
-        // i++;
-    // else
-    control_roll((int16_t)roll);
-        // i = 0;
-    
-    
+    if( i == 0)
+    {
+        control_pitch((int16_t)pit);
+        i++;
+    }
+    else if( i == 1)
+    {
+        control_roll((int16_t)roll);
+        if (multiple != 0 || zoom != 0)
+        {
+            i++;
+            /* code */
+        }
+        else
+        {
+            i = 0;
+        }
+        
+        
+    }
+    else if (i == 2)
+    {
+        if (multiple == 1)
+        {
+            inc_multiple();//增加放大倍数
+            /* code */
+        }
+        else if (multiple == 2)
+        {
+            red_multiple(); //减少放大倍数
+            /* code */
+        }
+        else if (multiple == 88)
+        {
+            stop();
+            multiple = 0;
+            /* code */
+        }
+        i++;
+    }
+    else if (i == 3)
+    {
+        if (zoom == 1)
+        {
+            inc_zoom(); // 增加放大倍数
+            /* code */
+        }
+        else if (zoom == 2)
+        {
+            red_zoom(); // 减少放大倍数
+            /* code */
+        }
+        else if (zoom == 88)
+        {
+            stop();
+            zoom = 0;
+            /* code */
+        }
+        i = 0;
+    }
 }
