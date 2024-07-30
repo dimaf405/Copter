@@ -1,6 +1,62 @@
 #include "Fire_Gimbal.h"
 Gimbal_str Gimbal;
 
+void Fire_Gimbal::up_left(uint8_t pitch, uint8_t roll)
+{ // 0xff,0x01,0x00,0x0c,0x0f,0x0f,0x2b
+    uint8_t data_to_send[7] = {0xff, 0x01, 0x00, 0x0c, 0x0f, 0x0f, 0x2b};
+    uint8_t sum = 0;
+    data_to_send[4] = roll;
+    data_to_send[5] = pitch;
+    for(uint8_t i = 1;i < 6;i++)
+    {
+        sum += data_to_send[i];
+    }
+    data_to_send[6] = sum;
+    hal.serial(4)->write(data_to_send, 7);
+}
+
+void Fire_Gimbal::up_right(uint8_t pitch, uint8_t roll)
+{ // 0xff,0x01,0x00,0x0a,0x0f,0x0f,0x29
+    uint8_t data_to_send[7] = {0xff, 0x01, 0x00, 0x0a, 0x0f, 0x0f, 0x29};
+    uint8_t sum = 0;
+    data_to_send[4] = roll;
+    data_to_send[5] = pitch;
+    for (uint8_t i = 1; i < 6; i++)
+    {
+        sum += data_to_send[i];
+    }
+    data_to_send[6] = sum;
+    hal.serial(4)->write(data_to_send, 7);
+}
+
+void Fire_Gimbal::down_right(uint8_t pitch, uint8_t roll)
+{ // 0xff,0x01,0x00,0x12,0x0f,0x0f,0x11
+    uint8_t data_to_send[7] = {0xff, 0x01, 0x00, 0x12, 0x0f, 0x0f, 0x11};
+    uint8_t sum = 0;
+    data_to_send[4] = roll;
+    data_to_send[5] = pitch;
+    for (uint8_t i = 1; i < 6; i++)
+    {
+        sum += data_to_send[i];
+    }
+    data_to_send[6] = sum;
+    hal.serial(4)->write(data_to_send, 7);
+}
+
+void Fire_Gimbal::down_left(uint8_t pitch, uint8_t roll)
+{ // 00xff,0x01,0x00,0x14,0x0f,0x0f,0x13
+    uint8_t data_to_send[7] = {0xff, 0x01, 0x00, 0x14, 0x0f, 0x0f, 0x13};
+    uint8_t sum = 0;
+    data_to_send[4] = roll;
+    data_to_send[5] = pitch;
+    for (uint8_t i = 1; i < 6; i++)
+    {
+        sum += data_to_send[i];
+    }
+    data_to_send[6] = sum;
+    hal.serial(4)->write(data_to_send, 7);
+}
+
 void Fire_Gimbal::inc_multiple()
 {
     uint8_t data_to_send[7] = {0xff, 0x01, 0x00, 0x20, 0x00, 0x00, 0x21};
@@ -102,7 +158,7 @@ void Fire_Gimbal::control_pitch(int16_t pitch)
     (pitch >= 0)?(output_angle=360-pitch):(output_angle = -pitch);
     data_to_send[4] = BYTE1(output_angle);
     data_to_send[5] = BYTE0(output_angle);
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 1; i < 6; i++)
     {
         sum += data_to_send[i];
         /* code */
@@ -119,7 +175,7 @@ void Fire_Gimbal::control_roll(int16_t roll)
     uint8_t sum = 0;
     data_to_send[4] = BYTE1(output_angle);
     data_to_send[5] = BYTE0(output_angle);
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 1; i < 6; i++)
     {
         sum += data_to_send[i];
         /* code */
@@ -214,17 +270,24 @@ void Fire_Gimbal::Data_Receive_Prepare()
 void Fire_Gimbal::control_by_RC()
 {
     static uint8_t i = 0,multiple = 0,zoom = 0;
-    static float pit = 0;
-    static float roll = 0;
-    
+    static float pit = 0,last_pit = 0;
+    static float roll = 0,last_roll = 0;;
+    static uint16_t last_window = 0;
     if (abs(Rc_In[5] - 1500) > 100 )
     {
-        pit += (Rc_In[5] - 1500)*0.005f;
+        pit = (Rc_In[5] - 1500)*0.51f;
     }
-
+    else
+    {
+        pit = 0;
+    }
     if (abs(Rc_In[4] - 1500) > 100)
     {
-        roll += (Rc_In[4] - 1500) * 0.005f;
+        roll = (Rc_In[4] - 1500) * 0.51f;
+    }
+    else
+    {
+        roll = 0;
     }
 
     if (abs(Rc_In[9] - 1500) > 100)
@@ -259,13 +322,59 @@ void Fire_Gimbal::control_by_RC()
     }
     
     if( i == 0)
-    {
-        control_pitch((int16_t)pit);
+    {   
+        if (pit != last_pit || roll != last_roll)
+        {
+            if (pit > 0)
+            {
+                if (roll > 0)
+                {
+                    up_right((uint8_t)pit,(uint8_t)roll);
+                    /* code */
+                }
+                else
+                {
+                    up_left((uint8_t)pit, (uint8_t)-roll);
+                }
+                
+            }
+            else 
+            {
+                if (roll > 0)
+                {
+                    down_right((uint8_t)-pit, (uint8_t)roll);
+                    /* code */
+                }
+                else
+                {
+                    down_left((uint8_t)-pit, (uint8_t)-roll);
+                }
+            }
+            last_pit = pit;
+            last_roll = roll;
+        }
+
+
+        // control_pitch((int16_t)pit);
         i++;
     }
     else if( i == 1)
     {
-        control_roll((int16_t)roll);
+        if (Rc_In[14] != last_window)
+        {
+            if (Rc_In[14] > 1500)
+            {
+                open_windscreen_wiper();
+                /* code */
+            }
+            else
+            {
+                close_windscreen_wiper();
+            }
+            last_window = Rc_In[14];
+        }
+
+        // control_roll((int16_t)roll);
         if (multiple != 0 || zoom != 0)
         {
             i++;

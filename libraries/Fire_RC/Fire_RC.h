@@ -4,6 +4,7 @@
 #include <FireFight/FireFightCRC.h>
 #include <Explosion_gases/Explosion_gases.h> //添加气体检测头文件
 #include <AP_HAL/AP_HAL.h>
+#include <Fire_Gimbal/Fire_Gimbal.h>
 #define BYTE0(dwTemp) (*((char *)(&dwTemp)))
 #define BYTE1(dwTemp) (*((char *)(&dwTemp) + 1))
 #define BYTE2(dwTemp) (*((char *)(&dwTemp) + 2))

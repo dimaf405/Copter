@@ -2,7 +2,8 @@
 #ifndef _Fire_Gimbal_h_
 #define _Fore_Gimbal_h_
 #include <FireFight/FireFightCRC.h>
-#include <RC_Channel/RC_Channel.h>
+#include <Fire_RC/Fire_RC.h>
+// #include <RC_Channel/RC_Channel.h>
 #define BYTE0(dwTemp) (*((char *)(&dwTemp)))
 #define BYTE1(dwTemp) (*((char *)(&dwTemp) + 1))
 #define BYTE2(dwTemp) (*((char *)(&dwTemp) + 2))
@@ -34,7 +35,11 @@ private:
     void close_windscreen_wiper(); // 雨刷关
     void turn_to_save_loc();       // 转到保存位置001
     void save_loc();               // 设置预置位置001
-    void stop();                   // 停止
+    void up_right(uint8_t pitch,uint8_t roll);//上右边控制
+    void up_left(uint8_t pitch, uint8_t roll); // 上左边控制
+    void down_right(uint8_t pitch, uint8_t roll); // 下右边控制
+    void down_left(uint8_t pitch, uint8_t roll); // 下左边控制
+
     void control_pitch(int16_t pitch);
     void control_roll(int16_t roll);
     /* data */
@@ -44,6 +49,7 @@ public:
     // void read_roll();
     void Data_Receive_Prepare();
     void control_by_RC();
+    void stop(); // 停止
 };
 
 

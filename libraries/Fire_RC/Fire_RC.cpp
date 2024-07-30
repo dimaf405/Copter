@@ -34,10 +34,10 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         temp_16 = E_g.gases.humidity;
         send_buff[cnt++] = BYTE1(temp_16);            // 壳体湿度H
         send_buff[cnt++] = BYTE0(temp_16);            // 壳体湿度L
-        temp_16 = 1234;
+        temp_16 = Gimbal.pitch;
         send_buff[cnt++] = BYTE1(temp_16);         // 氧气H
         send_buff[cnt++] = BYTE0(temp_16);      // 氧气L
-        temp_16 = 1234;
+        temp_16 = Gimbal.roll;
         send_buff[cnt++] = BYTE1(temp_16);      // 一氧化碳H
         send_buff[cnt++] = BYTE0(temp_16);      // 一氧化碳L
         temp_16 = E_g.gases.Co2;
