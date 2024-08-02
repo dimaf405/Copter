@@ -161,7 +161,6 @@ void Rover::Fire_Gimbal_Co()  //云台控制程序20HZ
     if (arming.is_armed()) //&& current_v > 40)
     {
         Fire_Gim.control_by_RC();
-
     }
     else
     {
