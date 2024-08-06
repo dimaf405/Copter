@@ -322,8 +322,8 @@ void Fire_Gimbal::control_by_RC()
     }
     
     if( i == 0)
-    {   
-        if (pit != last_pit || roll != last_roll)
+    {
+        if ((int8_t)pit != (int8_t)last_pit || (int8_t)roll != (int8_t)last_roll)
         {
             if (pit > 0)
             {
