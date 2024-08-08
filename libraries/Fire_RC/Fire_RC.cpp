@@ -346,13 +346,35 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
             // Rc_In[12] = RC.T0 * 500 + 1000;
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[12]:%d", Rc_In[12]);
             RC.T2 = (data_buf[11] << 8) + data_buf[12];   //喷雾/聚焦
-            Rc_In[13] = RC.T2 * 500 + 1500;
-            RC.T4 = (data_buf[15] << 8) + data_buf[16];   //车灯开关
+            if (RC.T2  <= 1 )
+            {
+                Rc_In[13] = -RC.T2 * 500 + 1500;
+            }
+            else if (RC.T2 == 2)
+            {
+                Rc_In[13] = 2000;
+            }
+
+            RC.T4 = (data_buf[15] << 8) + data_buf[16]; // 车灯开关
             Rc_In[14] = RC.T4 * 1000 + 1000;
             RC.T7 = (data_buf[21] << 8) + data_buf[22];   //预留
-            Rc_In[15] = RC.T7 * 500 + 1000;
+            if (RC.T7 <= 1)
+            {
+                Rc_In[15] = -RC.T7 * 500 + 1500;
+            }
+            else if (RC.T7 == 2)
+            {
+                Rc_In[15] = 2000;
+            }
             RC.T8 = (data_buf[23] << 8) + data_buf[24];   //预留
-            Rc_In[16] = RC.T8 * 500 + 1000;
+            if (RC.T8 <= 1)
+            {
+                Rc_In[16] = -RC.T8 * 500 + 1500;
+            }
+            else if (RC.T8 == 2)
+            {
+                Rc_In[16] = 2000;
+            }
             RC.T9 = (data_buf[25] << 8) + data_buf[26];   //跟随遥控
             Rc_In[17] = RC.T9 * 1000 + 1000;
             RC.T10 = (data_buf[27] << 8) + data_buf[28];  //模式切换
@@ -364,15 +386,15 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         else if(data_buf[3] == 0x50)
         {
             RC.P0_LR = data_buf[7];
-            Rc_In[2] = data_buf[7] * 3.9063f + 1000;
+            Rc_In[3] = data_buf[7] * 3.9063f + 1000;
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[0]:%d", Rc_In[0]);
             RC.P0_UD = data_buf[8];
-            Rc_In[3] = data_buf[8] * 3.9063f + 1000;
+            Rc_In[2] = data_buf[8] * 3.9063f + 1000;
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[1]:%d", Rc_In[1]);
             RC.P1_LR = data_buf[9];
-            Rc_In[1] = data_buf[9] * 3.9063f + 1000;
+            Rc_In[0] = data_buf[9] * 3.9063f + 1000;
             RC.P1_UD = data_buf[10];
-            Rc_In[0] = data_buf[10] * 3.9063f + 1000;
+            Rc_In[1] = data_buf[10] * 3.9063f + 1000;
             RC.P2_LR = data_buf[11];
             Rc_In[4] = data_buf[11] * 3.9063f + 1000;
             RC.P2_UD = data_buf[12];

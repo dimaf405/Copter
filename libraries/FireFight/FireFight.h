@@ -28,6 +28,7 @@ public:
     void uart_init(void);
     void read(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num);
     void write_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num);
+    void write_six(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2, int16_t val_3, int16_t val_4, int16_t val_5, int16_t val_6); // 连续写六个参数
     // uint8_t check_send_one(uint16_t val);
     uint8_t check_send_one(uint8_t addressID);
     void function_fire_fight(uint8_t DT_ms);
@@ -48,6 +49,8 @@ public:
     void pump_button(uint16_t val);     // 泵按钮
     void Record_button(uint16_t val);   // 录制按钮
     void playback_button(uint16_t val); // 回放按钮
+    void Belt_release_clutch();// 拖带离合器位于板子ID:3号
+    void LED_control();        // 灯控制器位于板子 ID：3号
     int16_t address_1, address_2;
     uint16_t Set_Left_motor, Read_Left_motor;
     uint16_t Set_Right_motor, Read_Right_motor;

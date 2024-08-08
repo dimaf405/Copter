@@ -86,6 +86,37 @@ void FireFight::write_one(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_
     hal.serial(1)->write(data_to_send, cnt);
 }
 
+void FireFight::write_six(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2, int16_t val_3, int16_t val_4, int16_t val_5, int16_t val_6) // 写两个寄存器，用于归零
+{
+    uint8_t data_to_send[30];
+    uint8_t cnt = 0;
+    uint16_t crc = 0;
+    uint16_t write_num = 0x0006;      // 怀疑写入地址错误，未验证，若验证清删除
+    data_to_send[cnt++] = address_ID; // 设备地址为01
+    data_to_send[cnt++] = 0x10;       // 写入的功能码为0x10
+    data_to_send[cnt++] = BYTE1(start_reg_adress);
+    data_to_send[cnt++] = BYTE0(start_reg_adress);
+    data_to_send[cnt++] = BYTE1(write_num); // 写入数量
+    data_to_send[cnt++] = BYTE0(write_num);
+    data_to_send[cnt++] = 12; // 写入字节数
+    data_to_send[cnt++] = BYTE1(val_1);
+    data_to_send[cnt++] = BYTE0(val_1);
+    data_to_send[cnt++] = BYTE1(val_2);
+    data_to_send[cnt++] = BYTE0(val_2);
+    data_to_send[cnt++] = BYTE1(val_3);
+    data_to_send[cnt++] = BYTE0(val_3);
+    data_to_send[cnt++] = BYTE1(val_4);
+    data_to_send[cnt++] = BYTE0(val_4);
+    data_to_send[cnt++] = BYTE1(val_5);
+    data_to_send[cnt++] = BYTE0(val_5);
+    data_to_send[cnt++] = BYTE1(val_6);
+    data_to_send[cnt++] = BYTE0(val_6);
+    crc = CRC.Funct_CRC16(data_to_send, cnt); // 官方给的CRC校验
+    data_to_send[cnt++] = BYTE0(crc);
+    data_to_send[cnt++] = BYTE1(crc);
+    hal.serial(1)->write(data_to_send, cnt);
+}
+
 void FireFight::write_two(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2) // 写两个寄存器，用于归零
 {
     uint8_t data_to_send[15];
@@ -275,109 +306,60 @@ void FireFight::playback_button(uint16_t val)
     write_one(0x01, 0x0016, val);
 }
 
+
 void FireFight::function_fire_fight(uint8_t DT_ms) // 执行周期，传入DT很重要
 {
 
-    // static uint8_t replay_flag = 0; // 当为1时候表示正在执行回放
-    uint16_t under_offset = 1800;
-    uint16_t low_offset = 1200;
+    int16_t action_pitch_1 = 0, action_pitch_2 = 0;   // pitch轴标志位
+    int16_t action_roll_1 = 0, action_roll_2 = 0;     //
+    int16_t action_zhu_1 = 0, action_zhu_2 = 0;       //
+
+    uint16_t under_offset = 1700;
+    uint16_t low_offset = 1300;
     // int8_t exp_offset_Up_Down = 0, exp_offset_Left_Right = 0;
     uint16_t rcin_2 = Rc_In[2];
     uint16_t rcin_3 = Rc_In[3];
     uint16_t rcin_4 = Rc_In[13];
-    if (abs(rcin_2 - 1500) > 100)
-    {
-        ((rcin_2 - 1500) > 0)? write_two(1,12,1,0):write_two(1,12,0,1);
-        // {exp_offset_Up_Down = 1} : exp_offset_Up_Down = -1; // 等于1表示上，-1表示向下
-    }
-    else //if (replay_flag != 1)
-    {
-        write_two(1, 12, 0, 0);
-        // exp_offset_Up_Down = 0; // 期望值给0
-                                //  aim_Up_Down_pulse = Up_Down_pulse;
-    }
-
     if (abs(rcin_3 - 1500) > 100)
     {
-        ((rcin_3 - 1500) > 0)? write_two(1, 14, 0, 1):write_two(1, 14, 1, 0);
+            ((rcin_3 - 1500) > 0) ? (action_pitch_1 = 1, action_pitch_2 = 0) : (action_pitch_1 = 0, action_pitch_2 = 1); 
+        // {exp_offset_Up_Down = 1} : exp_offset_Up_Down = -1; // 等于1表示上，-1表示向下
+    }
+    else if (abs(rcin_3 - 1500) < 100)
+    {
+        action_pitch_1 = 0, action_pitch_2 = 0;
+    }
+
+    if (abs(rcin_2 - 1500) > 100)
+    {
+        ((rcin_2 - 1500) > 0) ? (action_roll_1 = 0, action_roll_2 = 1):(action_roll_1 = 1, action_roll_2 = 0);
         // exp_offset_Left_Right = 1:exp_offset_Left_Right=-1; //等于1表示向右，-1表示向左边
     }
     else //if (replay_flag != 1)
     {
-        write_two(1, 14, 0, 0);
-        // exp_offset_Left_Right = 0; // 期望值给0
-        // aim_Left_Right_pulse = Left_Right_pulse;
+        action_roll_1 = 0, action_roll_2 = 0;
     }
 
     // write_two(1,0,exp_offset_Up_Down,exp_offset_Left_Right);
 
     if ((rcin_4) > under_offset)
     {
-        // if (/* condition */ time_cnt_zhu == 0)
-        // {
-        //     wu_button(0); // 将雾清零             /* code */
-        // }
-        // time_cnt_zhu++;
-        // if (time_cnt_zhu >= 2) // 延时一个执行周期
-        // {
-        //     /* code */
-        //     zhu_button(1);
-        //     time_cnt_zhu = 0;
-        // }
-        write_two(0x01,0x0010,1,0);
+        action_zhu_1 = 1, action_zhu_2 = 0;
+        // write_two(0x01,0x0010,1,0);
 
     }
-    else if ((rcin_4) < under_offset)
+    else if ((rcin_4) < low_offset)
     {
-        // if (/* condition */ time_cnt_zhu == 0)
-        // {
-        //     zhu_button(0); // 将柱清零            /* code */
-        // }
-        // time_cnt_zhu++;
-        // if (time_cnt_zhu >= 2) // 延时一个执行周期
-        // {
-        //     /* code */
-        //     wu_button(1);
-        //     time_cnt_zhu = 0;
-        // }
-        write_two(0x01,0x0010,0,0);
+        // write_two(0x01,0x0010,0,0);
+        action_zhu_1 = 0, action_zhu_2 = 1;
     }
 
     else if (((rcin_4) > low_offset) && ((rcin_4) < under_offset))
     {
-        // if (/* condition */ time_cnt_zhu == 0)
-        // {
-        //     zhu_button(0); // 将柱清零            /* code */
-        // }
-        // time_cnt_zhu++;
-        // if (time_cnt_zhu >= 2) // 延时一个执行周期
-        // {
-
-        //     /* code */
-
-        //     wu_button(0);
-        //     time_cnt_zhu = 0;
-        //     // wu_zhu++;
-        // }
-        write_two(0x01,0x0010,0,1);
+        // write_two(0x01,0x0010,0,1);
+        action_zhu_1 = 0, action_zhu_2 = 0;
     }
-
-    // if ((hal.rcin->read(5)) > under_offset) // 表示正在录制动作
-    // {
-    //     replay_flag = 2;
-    //     write_two(1,21,1,0);  //发送录制按键按下指令
-
-    // }
-    // else if ((hal.rcin->read(5)) < low_offset)
-    // {
-    //     replay_flag = 1;
-    //     write_two(1, 21, 0, 1); // 发送回放按键按下指令
-    // }
-
-    // else if (((hal.rcin->read(5)) > low_offset) && ((hal.rcin->read(5)) < under_offset))
-    // {
-    //     write_two(1, 21, 0, 0); // 发送清零指令
-    // }
+    write_six(1, 12, action_pitch_1, action_pitch_2, action_roll_1, action_roll_2, action_zhu_1, action_zhu_2);
 
 }
 
