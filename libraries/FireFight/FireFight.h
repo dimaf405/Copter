@@ -31,7 +31,7 @@ public:
     void write_six(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2, int16_t val_3, int16_t val_4, int16_t val_5, int16_t val_6); // 连续写六个参数
     // uint8_t check_send_one(uint16_t val);
     uint8_t check_send_one(uint8_t addressID);
-    void function_fire_fight(uint8_t DT_ms);
+    void function_fire_fight(uint8_t DT_ms); // 1号消防炮板子，具体定义见文档
     void parm_change();
     void write_two(uint8_t address_ID, uint16_t start_reg_adress, int16_t val_1, int16_t val_2);
     void up_button(uint16_t val);
@@ -49,8 +49,8 @@ public:
     void pump_button(uint16_t val);     // 泵按钮
     void Record_button(uint16_t val);   // 录制按钮
     void playback_button(uint16_t val); // 回放按钮
-    void Belt_release_clutch();// 拖带离合器位于板子ID:3号
-    void LED_control();        // 灯控制器位于板子 ID：3号
+    void FireFight_ID2(uint8_t DT_ms);  // 2号消防炮板子，声光报警1；推杆风扇电机2；自喷淋3
+    void FireFight_ID3(uint8_t DT_ms);  // 3号消防炮控制板，拖带离合器1；风扇2；GPIO灯控3、4
     int16_t address_1, address_2;
     uint16_t Set_Left_motor, Read_Left_motor;
     uint16_t Set_Right_motor, Read_Right_motor;

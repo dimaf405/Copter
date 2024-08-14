@@ -187,15 +187,16 @@ void Rover::FireFight_open() // 每2毫秒执行一次
     uint16_t rcin_8 = hal.rcin->read(8);
     uint8_t static stop_button = 0;
     static uint16_t last_rcin_8 = rcin_8;
+    // firefight_rover.function_fire_fight(5); //没有遥控器，测试用的
     if (abs(rcin_8 - last_rcin_8) > 800) // 判断是否有案件按下
     {
         stop_button = ~stop_button; // 相当于按键被按下
     }
     last_rcin_8 = rcin_8;
-    if (arming.is_armed()) //&& current_v > 40)
+    if ( arming.is_armed()) //&& current_v > 40)
     {
         fire_led.launch_motor();
-        firefight_rover.function_fire_fight(2);
+        firefight_rover.function_fire_fight(40);
 
         // firefight_rover.read_one(1, 25, 2);   // 发送读取脉冲数值命令
         firefight_rover.check_send_one(0x01); // 串口接收返回脉冲数值

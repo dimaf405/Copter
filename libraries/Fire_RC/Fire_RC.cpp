@@ -417,10 +417,13 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         RC.F0 = (data_buf[7] & 0x01);
         Rc_In[12] = -RC.F0 * 1000 + 2000;
         RC.F5 = (uint8_t)((data_buf[7] & 0x20) >> 5);
+        Rc_In[19] = -RC.F5 * 1000 + 2000;
         RC.F8 = (uint8_t)((data_buf[8] & 0x01) >> 0);
+        Rc_In[20] = -RC.F8 * 1000 + 2000;
         RC.F18 = (uint8_t)((data_buf[9] & 0x02) >> 1);
         RC.F17 = (uint8_t)((data_buf[9] & 0x04) >> 2);
         RC.F21 = (uint8_t)((data_buf[9] & 0x20) >> 5);
+        Rc_In[21] = -RC.F21 * 1000 + 2000;
         RC.F22 = (uint8_t)((data_buf[9] & 0x40) >> 6);
 
         break;
