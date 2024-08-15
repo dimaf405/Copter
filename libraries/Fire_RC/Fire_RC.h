@@ -35,12 +35,12 @@ class Fire_RC
 private:
     FireFightCRC CRC;
     Explosion_gases E_g;
-    void Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num);
+    uint8_t Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num);
     RC_str RC;
     // int16_t Rc_In[25];
     /* data */
 public:
-    void Data_Receive_Prepare();
+    uint8_t Data_Receive_Prepare();
 
     int16_t get_RC(uint8_t num);
     // Fire_RC(/* args */);

@@ -1,7 +1,7 @@
 #include "Fire_RC.h"
 #include <GCS_MAVLink/GCS.h> //地面站
 int16_t Rc_In[25];
-void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
+uint8_t Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
 {
     uint8_t send_buff[255];
     uint8_t cnt = 0;
@@ -332,6 +332,7 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         send_buff[cnt++] = BYTE0(crc);
         send_buff[cnt++] = BYTE1(crc);
         hal.serial(6)->write(send_buff, cnt);
+        return 1; //表示气体传感器更新完毕
         // gcs().send_text(MAV_SEVERITY_CRITICAL, "cnt:%d", cnt);
         // 如果是读寄存器则执行以下函数
         // register_add = data_buf[2] << 8 | data_buf[3];
@@ -382,6 +383,7 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
             (Rc_In[18] > 2000) ? Rc_In[18] = 2000 : Rc_In[18] = Rc_In[18];
             // gcs().send_text(MAV_SEVERITY_CRITICAL, "Rc_In[18]:%d", Rc_In[18]);
             /* code */
+            return 2; // 表示遥控器更新完毕
         }
         else if(data_buf[3] == 0x50)
         {
@@ -412,6 +414,7 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
             RC.P5_UD = data_buf[18];
             Rc_In[11] = data_buf[18] * 3.9063f + 1000;
         }
+        return 2; // 表示遥控器更新完毕
         break;
     case 0x0F:
         RC.F0 = (data_buf[7] & 0x01);
@@ -425,9 +428,10 @@ void Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         RC.F21 = (uint8_t)((data_buf[9] & 0x20) >> 5);
         Rc_In[21] = -RC.F21 * 1000 + 2000;
         RC.F22 = (uint8_t)((data_buf[9] & 0x40) >> 6);
-
+        return 2; // 表示遥控器更新完毕
         break;
     }
+    return 0; // 表示遥错误
 }
 
 int16_t Fire_RC::get_RC(uint8_t num)
@@ -438,8 +442,9 @@ int16_t Fire_RC::get_RC(uint8_t num)
     }
     return -1;
 }
-void Fire_RC::Data_Receive_Prepare()
+uint8_t Fire_RC::Data_Receive_Prepare()
 {
+    static uint8_t frist_rcin = 0;
     uint8_t num = hal.serial(6)->available(); // 读取串口有多少个数据
     // gcs().send_text(MAV_SEVERITY_CRITICAL, "num:%d", num);
     uint8_t c;
@@ -511,7 +516,23 @@ void Fire_RC::Data_Receive_Prepare()
                 uint16_t crc = CRC.Funct_CRC16(data_buff, rece_len - 2);
                 if (crc == ((data_buff[rece_len - 2]) | data_buff[rece_len - 1] << 8)) // 表示校验通过可以进行解析
                 {
-                    Data_Receive_Anl_Task(data_buff, rece_len);
+                    uint8_t res = Data_Receive_Anl_Task(data_buff, rece_len);
+                    if (frist_rcin == 0 )
+                    {
+                        if (res != 2 && Rc_In[3] > 1400)
+                        {
+                            frist_rcin = 1;
+                            return res;
+                        }
+                        else
+                        {
+                            return 2;
+                        }
+                        /* code */
+                    }
+                    return res;
+                    
+                     
                 }
                 rece_len = 0;
                 stat = 0;
@@ -523,4 +544,5 @@ void Fire_RC::Data_Receive_Prepare()
             stat = 0;
         }
     }
+    return 0;
 }

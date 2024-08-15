@@ -77,7 +77,10 @@ bool RC_Channels::read_input(void)
     has_new_overrides = false;
 
     last_update_ms = AP_HAL::millis();
-    F_RC.Data_Receive_Prepare();
+    if(F_RC.Data_Receive_Prepare() != 2)  //如果不是收到的遥控器数据，则退出
+    {
+        return false;
+    }
     bool success = false;
     for (uint8_t i=0; i<NUM_RC_CHANNELS; i++) {
         success |= channel(i)->update();
