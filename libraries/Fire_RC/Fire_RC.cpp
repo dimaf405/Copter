@@ -517,9 +517,10 @@ uint8_t Fire_RC::Data_Receive_Prepare()
                 if (crc == ((data_buff[rece_len - 2]) | data_buff[rece_len - 1] << 8)) // 表示校验通过可以进行解析
                 {
                     uint8_t res = Data_Receive_Anl_Task(data_buff, rece_len);
+                    gcs().send_text(MAV_SEVERITY_CRITICAL, "res:%d", res);
                     if (frist_rcin == 0 )
                     {
-                        if (res != 2 && Rc_In[3] > 1400)
+                        if (res == 2 && Rc_In[3] > 1400)
                         {
                             frist_rcin = 1;
                             return res;

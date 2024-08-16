@@ -79,13 +79,15 @@ uint8_t RC_Channels::read_input(void)
 
     last_update_ms = AP_HAL::millis();
     resp = F_RC.Data_Receive_Prepare();
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "resp:%d", resp);
     if (resp == 3)
     {
         return 3;
         /* code */
     }
-    
+    else if(resp == 0)
+    {
+        return 0;
+    }
     
     bool success = false;
     for (uint8_t i=0; i<NUM_RC_CHANNELS; i++) {
