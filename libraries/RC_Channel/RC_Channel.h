@@ -469,7 +469,7 @@ public:
     static uint8_t get_valid_channel_count(void);                      // returns the number of valid channels in the last read
     static int16_t get_receiver_rssi(void);                            // returns [0, 255] for receiver RSSI (0 is no link) if present, otherwise -1
     static int16_t get_receiver_link_quality(void);                         // returns 0-100 % of last 100 packets received at receiver are valid
-    bool read_input(void);                                             // returns true if new input has been read in
+    uint8_t read_input(void);                                               // returns true if new input has been read in
     static void clear_overrides(void);                                 // clears any active overrides
     static bool receiver_bind(const int dsmMode);                      // puts the receiver in bind mode if present, returns true if success
     static void set_override(const uint8_t chan, const int16_t value, const uint32_t timestamp_ms = 0); // set a channels override value

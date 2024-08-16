@@ -544,5 +544,13 @@ uint8_t Fire_RC::Data_Receive_Prepare()
             stat = 0;
         }
     }
-    return 0;
+    if (frist_rcin == 0)
+    {
+        return 3;
+    }
+    else
+    {
+        return 0;
+    }
+        
 }

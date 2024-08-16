@@ -127,20 +127,39 @@ void Rover::rudder_arm_disarm_check()
 
 void Rover::read_radio()
 {
+    uint8_t rc_flag = rc().read_input();
     // if (!rc().read_input()) {
     //     // check if we lost RC link
     //     radio_failsafe_check(channel_throttle->get_radio_in());
     //     // gcs().send_text(MAV_SEVERITY_CRITICAL, "channel_throttle->get_radio_in():%d", channel_throttle->get_radio_in());
     //     return;
     // }
-    rc().read_input();
-    // gcs().send_text(MAV_SEVERITY_CRITICAL, "channel_throttle->get_radio_in():%d", channel_throttle->get_radio_in());
-    failsafe.last_valid_rc_ms = AP_HAL::millis();
-    // check that RC value are valid
-    radio_failsafe_check(channel_throttle->get_radio_in());
+    if (rc_flag == true)
+    {
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "channel_throttle->get_radio_in():%d", channel_throttle->get_radio_in());
+        failsafe.last_valid_rc_ms = AP_HAL::millis();
+        // check that RC value are valid
+        radio_failsafe_check(channel_throttle->get_radio_in());
 
-    // check if we try to do RC arm/disarm
-    rudder_arm_disarm_check();
+        // check if we try to do RC arm/disarm
+        rudder_arm_disarm_check();
+    }
+    else if (rc_flag == 3)
+    {
+        failsafe.last_valid_rc_ms = AP_HAL::millis();
+    }
+    else
+    {
+        if(AP_HAL::millis() - failsafe.last_valid_rc_ms > 500)
+        {
+            radio_failsafe_check(channel_throttle->get_radio_in());
+
+            // check if we try to do RC arm/disarm
+            rudder_arm_disarm_check();
+        }
+
+    }
+    gcs().send_text(MAV_SEVERITY_CRITICAL, "rc_flag:%d", rc_flag);
 }
 
 void Rover::radio_failsafe_check(uint16_t pwm)
