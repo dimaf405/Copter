@@ -526,7 +526,7 @@ uint8_t Fire_RC::Data_Receive_Prepare()
                         }
                         else
                         {
-                            return 2;
+                            return 3;
                         }
                         /* code */
                     }
