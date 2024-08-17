@@ -27,6 +27,14 @@ struct Thermal_imaging
     /* data */
 };
 
+struct Bms_info_str
+{
+    uint16_t All_Vol;   // 电池总电压 单位 10mV，高字节在前
+    uint16_t I_cur;     //当前电流数值 单位 10mA
+    uint8_t RSOC;       // 电池剩余电量%
+    uint16_t temp;      //电池温度
+
+};
 
 class Explosion_gases
 {
@@ -36,13 +44,16 @@ private:
     void Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num);//数据处理函数
     void Data_Receive_Prepare(uint8_t device_ID);               // 数据接收准备
     void read(uint8_t address_ID, uint16_t reg_adress, uint16_t reg_num); // 只需要填写寄存器ID和寄存器个数
-    /* data */
-public:
+    void read_Bms(uint16_t comand_ID);                  // 只需要填写寄存器ID和寄存器个数
+        /* data */
+public : 
     Ex_Gases gases;
     Thermal_imaging Ther_ima;
+    Bms_info_str Bms_info;
     void get_Thermal_imaging();    //读取热成像数据
     void read_Explosion_gasese();  //读取气体传感器数据
-};
+    void get_Bms_Info();     //读取BMS信息
+};  
 
 
 

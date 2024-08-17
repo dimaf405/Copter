@@ -159,7 +159,7 @@ void Rover::read_radio()
         }
 
     }
-    gcs().send_text(MAV_SEVERITY_CRITICAL, "rc_flag:%d", rc_flag);
+    // gcs().send_text(MAV_SEVERITY_CRITICAL, "rc_flag:%d", rc_flag);
 }
 
 void Rover::radio_failsafe_check(uint16_t pwm)

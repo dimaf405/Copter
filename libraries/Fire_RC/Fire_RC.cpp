@@ -19,13 +19,14 @@ uint8_t Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
     {
     case 0x03: 
         E_g.read_Explosion_gasese();
+        E_g.get_Bms_Info();
         send_buff[cnt++] = 0x4D; //遥控器ID
         send_buff[cnt++] = 0x03; // 返回功能位
         send_buff[cnt++] = 224; // 返回字节数
-        temp_16 = 1234;
+        temp_16 = E_g.Bms_info.temp;
         send_buff[cnt++] = BYTE1(temp_16);   // 右电机温度H
         send_buff[cnt++] = BYTE0(temp_16);   // 右电机温度L
-        temp_16 = 1234;
+        temp_16 = E_g.Bms_info.temp;
         send_buff[cnt++] = BYTE1(temp_16); // 左电机温度H
         send_buff[cnt++] = BYTE0(temp_16); // 左电机温度L
         temp_16 = E_g.gases.temp;
@@ -208,25 +209,25 @@ uint8_t Fire_RC::Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num)
         
         send_buff[cnt++] = BYTE1(temp_16);                         // 车体报警码
         send_buff[cnt++] = BYTE0(temp_16);                         // 车体报警码
-        
+        temp_16 = E_g.Bms_info.RSOC;
         send_buff[cnt++] = BYTE1(temp_16);                         // 车体电量
         send_buff[cnt++] = BYTE0(temp_16);                         // 车体电量
-        
+        temp_16 = 1234;
         send_buff[cnt++] = BYTE1(temp_16);                         // 左电机转速
         send_buff[cnt++] = BYTE0(temp_16);                         // 左电机转速
         
         send_buff[cnt++] = BYTE1(temp_16);                         // 右电机转速
         send_buff[cnt++] = BYTE0(temp_16);                         // 右电机转速
-        
+        temp_16 = E_g.Bms_info.I_cur;
         send_buff[cnt++] = BYTE1(temp_16);                         // 车体放电电流
         send_buff[cnt++] = BYTE0(temp_16);                         // 车体放电电流
-        
+        temp_16 = E_g.Bms_info.I_cur;
         send_buff[cnt++] = BYTE1(temp_16);                         // 车体充电电流
         send_buff[cnt++] = BYTE0(temp_16);                         // 车体充电电流
-        
+        temp_16 = E_g.Bms_info.All_Vol;
         send_buff[cnt++] = BYTE1(temp_16);                         // 车体电池电压
         send_buff[cnt++] = BYTE0(temp_16);                         // 车体电池电压
-        
+        temp_16 = 1234;
         send_buff[cnt++] = BYTE1(temp_16);                         // 回零设置
         send_buff[cnt++] = BYTE0(temp_16);                         // 回零设置
         
@@ -517,7 +518,7 @@ uint8_t Fire_RC::Data_Receive_Prepare()
                 if (crc == ((data_buff[rece_len - 2]) | data_buff[rece_len - 1] << 8)) // 表示校验通过可以进行解析
                 {
                     uint8_t res = Data_Receive_Anl_Task(data_buff, rece_len);
-                    gcs().send_text(MAV_SEVERITY_CRITICAL, "res:%d", res);
+                    // gcs().send_text(MAV_SEVERITY_CRITICAL, "res:%d", res);
                     if (frist_rcin == 0 )
                     {
                         if (res == 2 && Rc_In[3] > 1400)
