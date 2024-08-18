@@ -79,50 +79,50 @@ void Copter::init_rc_out()
 
 void Copter::read_radio()
 {
-    const uint32_t tnow_ms = millis();
+    // const uint32_t tnow_ms = millis();
+    rc().read_input();
+    // if (rc().read_input()) {
+    //     ap.new_radio_frame = true;
 
-    if (rc().read_input()) {
-        ap.new_radio_frame = true;
+    //     set_throttle_and_failsafe(channel_throttle->get_radio_in());
+    //     set_throttle_zero_flag(channel_throttle->get_control_in());
 
-        set_throttle_and_failsafe(channel_throttle->get_radio_in());
-        set_throttle_zero_flag(channel_throttle->get_control_in());
+    //     // RC receiver must be attached if we've just got input
+    //     ap.rc_receiver_present = true;
 
-        // RC receiver must be attached if we've just got input
-        ap.rc_receiver_present = true;
+    //     // pass pilot input through to motors (used to allow wiggling servos while disarmed on heli, single, coax copters)
+    //     radio_passthrough_to_motors();
 
-        // pass pilot input through to motors (used to allow wiggling servos while disarmed on heli, single, coax copters)
-        radio_passthrough_to_motors();
+    //     const float dt = (tnow_ms - last_radio_update_ms)*1.0e-3f;
+    //     rc_throttle_control_in_filter.apply(channel_throttle->get_control_in(), dt);
+    //     last_radio_update_ms = tnow_ms;
+    //     return;
+    // }
 
-        const float dt = (tnow_ms - last_radio_update_ms)*1.0e-3f;
-        rc_throttle_control_in_filter.apply(channel_throttle->get_control_in(), dt);
-        last_radio_update_ms = tnow_ms;
-        return;
-    }
+    // // No radio input this time
+    // if (failsafe.radio) {
+    //     // already in failsafe!
+    //     return;
+    // }
 
-    // No radio input this time
-    if (failsafe.radio) {
-        // already in failsafe!
-        return;
-    }
+    // // trigger failsafe if no update from the RC Radio for RC_FS_TIMEOUT seconds
+    // const uint32_t elapsed_ms = tnow_ms - last_radio_update_ms;
+    // if (elapsed_ms < rc().get_fs_timeout_ms()) {
+    //     // not timed out yet
+    //     return;
+    // }
+    // if (!g.failsafe_throttle) {
+    //     // throttle failsafe not enabled
+    //     return;
+    // }
+    // if (!ap.rc_receiver_present && !motors->armed()) {
+    //     // we only failsafe if we are armed OR we have ever seen an RC receiver
+    //     return;
+    // }
 
-    // trigger failsafe if no update from the RC Radio for RC_FS_TIMEOUT seconds
-    const uint32_t elapsed_ms = tnow_ms - last_radio_update_ms;
-    if (elapsed_ms < rc().get_fs_timeout_ms()) {
-        // not timed out yet
-        return;
-    }
-    if (!g.failsafe_throttle) {
-        // throttle failsafe not enabled
-        return;
-    }
-    if (!ap.rc_receiver_present && !motors->armed()) {
-        // we only failsafe if we are armed OR we have ever seen an RC receiver
-        return;
-    }
-
-    // Log an error and enter failsafe.
-    LOGGER_WRITE_ERROR(LogErrorSubsystem::RADIO, LogErrorCode::RADIO_LATE_FRAME);
-    set_failsafe_radio(true);
+    // // Log an error and enter failsafe.
+    // LOGGER_WRITE_ERROR(LogErrorSubsystem::RADIO, LogErrorCode::RADIO_LATE_FRAME);
+    // set_failsafe_radio(true);
 }
 
 #define FS_COUNTER 3        // radio failsafe kicks in after 3 consecutive throttle values below failsafe_throttle_value

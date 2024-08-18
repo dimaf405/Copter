@@ -32,7 +32,8 @@ extern const AP_HAL::HAL& hal;
 #include <AP_Logger/AP_Logger.h>
 
 #include "RC_Channel.h"
-
+#include <Copter_Rc/Copter_Rc.h>
+Copter_Rc copter_rc;
 /*
   channels group object constructor
  */
@@ -72,13 +73,13 @@ uint8_t RC_Channels::get_radio_in(uint16_t *chans, const uint8_t num_channels)
 // update all the input channels
 bool RC_Channels::read_input(void)
 {
-    if (hal.rcin->new_input()) {
-        _has_had_rc_receiver = true;
-    } else if (!has_new_overrides) {
-        return false;
-    }
-
-    has_new_overrides = false;
+    // if (hal.rcin->new_input()) {
+    //     _has_had_rc_receiver = true;
+    // } else if (!has_new_overrides) {
+    //     return false;
+    // }
+    copter_rc.MAVlink_Data_Receive_Prepare();
+    // has_new_overrides = false;
 
     last_update_ms = AP_HAL::millis();
 
