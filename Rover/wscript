@@ -33,6 +33,7 @@ def build(bld):
             'Fire_RC',
             'Explosion_gases',
             'Fire_Gimbal',
+            'Copter_Rc',
         ],
     )
 

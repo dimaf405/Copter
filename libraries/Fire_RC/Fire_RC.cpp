@@ -454,6 +454,7 @@ uint8_t Fire_RC::Data_Receive_Prepare()
     while(num > 0)
     {
         c = hal.serial(6)->read();
+        // copter_rc.MAVlink_Data_Receive_Prepare(c);
         num--;
         if (stat == 0)
         {

@@ -5,6 +5,7 @@
 #include <Explosion_gases/Explosion_gases.h> //添加气体检测头文件
 #include <AP_HAL/AP_HAL.h>
 #include <Fire_Gimbal/Fire_Gimbal.h>
+#include <Copter_Rc/Copter_Rc.h>
 #define BYTE0(dwTemp) (*((char *)(&dwTemp)))
 #define BYTE1(dwTemp) (*((char *)(&dwTemp) + 1))
 #define BYTE2(dwTemp) (*((char *)(&dwTemp) + 2))
@@ -35,6 +36,7 @@ class Fire_RC
 private:
     FireFightCRC CRC;
     Explosion_gases E_g;
+    Copter_Rc copter_rc;
     uint8_t Data_Receive_Anl_Task(uint8_t *data_buf, uint16_t num);
     RC_str RC;
     // int16_t Rc_In[25];
