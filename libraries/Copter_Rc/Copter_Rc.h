@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once   //这个文件是负责获取mavlink的遥控器的数值的
 #ifndef _Copter_RC_h_
 #define _Copter_RC_h_
 #include <GCS_MAVLink/GCS.h>
