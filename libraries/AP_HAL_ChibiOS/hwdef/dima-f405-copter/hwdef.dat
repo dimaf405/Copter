@@ -127,8 +127,7 @@ STORAGE_FLASH_PAGE 2
 # reserve 32k for bootloader and 32k for flash storage
 FLASH_RESERVE_START_KB 64
 
-# enable FLASH/RAMTROM parameter storage
-#define HAL_WITH_DATAFLASH 1
+
 
 # one IMU
 #IMU Invensense SPI:mpu6000 ROTATION_YAW_180
