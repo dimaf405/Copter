@@ -12,8 +12,9 @@ void Copter_Rc::MAVlink_Data_Receive_Prepare()
     uint8_t ret;
     while(num > 0)
     {
+        num--;
         c = hal.serial(2)->read();
-        ret = mavlink_parse_char(MAVLINK_COMM_3, c, &msg, &status);
+        ret = mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status);
         if (ret == MAVLINK_FRAMING_OK)
         {
             switch (msg.msgid)
