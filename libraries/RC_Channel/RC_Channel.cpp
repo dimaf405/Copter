@@ -291,6 +291,7 @@ bool RC_Channel::update(void)
     // } else {
     //     return false;
     // }
+    // copter_rec_chan[ch_in] = ch_in;
     radio_in = copter_rec_chan[ch_in];
     if (type_in == ControlType::RANGE) {
         control_in = pwm_to_range();

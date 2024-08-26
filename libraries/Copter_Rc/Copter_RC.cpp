@@ -5,6 +5,7 @@ uint16_t *copter_rec_chan;
 void Copter_Rc::MAVlink_Data_Receive_Prepare()
 {
     uint8_t num = hal.serial(2)->available(); // 读取串口有多少个数据
+    // gcs().send_text(MAV_SEVERITY_INFO, "num=%d",num);
     uint8_t c;
     static mavlink_message_t msg;
     static mavlink_status_t status;
@@ -19,8 +20,8 @@ void Copter_Rc::MAVlink_Data_Receive_Prepare()
             {
             case MAVLINK_MSG_ID_RC_CHANNELS:/* constant-expression */
                 mavlink_msg_rc_channels_decode(&msg,&copter_rec_rc);
-                copter_rec_chan = &(copter_rec_rc.chan1_raw);
-                // gcs().send_text(MAV_SEVERITY_CRITICAL, "copter_rec_chan1:%d", copter_rec_chan[0]);
+                copter_rec_chan = &(copter_rec_rc.chan1_raw); // 将copter_rec_chan的初始地址变成chan1_raw
+                // // gcs().send_text(MAV_SEVERITY_CRITICAL, "copter_rec_chan1:%d", copter_rec_chan[0]);
                 // gcs().send_text(MAV_SEVERITY_CRITICAL, "copter_rec_rc2:%d", copter_rec_rc.chan2_raw);
                 break;
 

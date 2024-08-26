@@ -18,6 +18,9 @@ define CH_CFG_ST_RESOLUTION 16
 FLASH_SIZE_KB 1024
 
 
+# enable logging to dataflash
+define HAL_LOGGING_DATAFLASH_ENABLED 1
+
 # only one I2C bus
 I2C_ORDER I2C1
 
@@ -128,10 +131,11 @@ FLASH_RESERVE_START_KB 64
 #IMU Invensense SPI:mpu6000 ROTATION_YAW_180
 
 # probe for I2C BMP280, but allow init on board variants without onboard baro too
-# BARO BMP280 I2C:0:0x76
-# define HAL_BARO_ALLOW_INIT_NO_BARO
-# define AP_BARO_BACKEND_DEFAULT_ENABLED 0
-# define AP_BARO_BMP280_ENABLED 1
+BARO BMP280 I2C:0:0x76
+BARO SPL06 I2C:0:0x76
+define AP_BARO_SPL06_ENABLED 1
+define HAL_PROBE_EXTERNAL_I2C_BAROS
+define HAL_BARO_ALLOW_INIT_NO_BARO
 
 # no built-in compass, but probe the i2c bus for all possible
 # external compass types
@@ -140,19 +144,6 @@ define HAL_PROBE_EXTERNAL_I2C_COMPASSES
 define HAL_I2C_INTERNAL_MASK 0
 define HAL_COMPASS_AUTO_ROT_DEFAULT 2
 
-# DPS310 integrated on I2C2 bus, multiple possible choices for external barometer
-#BARO MS56XX I2C:0:0x77
-#BARO DPS310 I2C:0:0x76
-#BARO BMP280 I2C:0:0x76
-
-# enable SPL06 baro
-BARO SPL06 I2C:0:0x76
-define AP_BARO_SPL06_ENABLED 1
-
-# Compass
-#COMPASS QMC5883L I2C:0:0xd false ROTATION_PITCH_180_YAW_90
-#define HAL_PROBE_EXTERNAL_I2C_COMPASSES
-#define HAL_I2C_INTERNAL_MASK 1
 
 # BMI088 on SPI1
 SPIDEV bmi088_g SPI1 DEVID1  BMI088_G_CS  MODE3 10*MHZ 10*MHZ
@@ -162,10 +153,9 @@ SPIDEV bmi088_a SPI1 DEVID2  BMI088_A_CS  MODE3 10*MHZ 10*MHZ
 SPIDEV icm42688 SPI2 DEVID3 ICM42688_CS MODE3  1*MHZ  4*MHZ
 
 # Flash Card on SPI3
-SPIDEV dataflash SPI3 DEVID4 FLASH_CS MODE3 500*KHZ 25*MHZ
+SPIDEV dataflash SPI3 DEVID4 FLASH_CS MODE3 32*MHZ 32*MHZ
 
-
-IMU BMI088 SPI:bmi088_a SPI:bmi088_g ROTATION_PITCH_180_YAW_270
+IMU BMI088 SPI:bmi088_a SPI:bmi088_g ROTATION_ROLL_180
 IMU Invensensev3 SPI:icm42688 ROTATION_ROLL_180
 
 # filesystem setup on sdcard
@@ -181,6 +171,7 @@ define HAL_PARACHUTE_ENABLED 0
 define HAL_SPRAYER_ENABLED 0
 
 # save some flash
-include ../include/save_some_flash.inc
-include ../include/minimize_fpv_osd.inc
+
+#include ../include/save_some_flash.inc
+#include ../include/minimize_fpv_osd.inc
 
