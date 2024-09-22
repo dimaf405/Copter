@@ -414,10 +414,59 @@ uint32_t GCS_MAVLINK_Plane::telem_delay() const
     return (uint32_t)(plane.g.telem_delay);
 }
 
+void GCS_MAVLINK_Plane::send_FC_dat() const  //增加自定义mavlink消息函数
+{
+    const AP_AHRS &ahrs = AP::ahrs();
+    const Vector3f omega = ahrs.get_gyro();
+    Vector3f local_position, velocity;
+    float air_speed = vfr_hud_airspeed();
+    const AP_BattMonitor &battery = AP::battery();
+    uint16_t values[8] = {};
+    rc().get_radio_in(values, ARRAY_SIZE(values));
+
+    float current;
+    if (battery.current_amps(current, 1))
+    {
+        current = constrain_float(current, -INT16_MAX, INT16_MAX); // 10*mA
+    }
+    else
+    {
+        current = -1;
+    }
+    mavlink_msg_fc_dat_send(chan,  //这个函数在生成文件夹下面增加send的
+                            AP_HAL::micros(),
+                            ahrs.get_roll(),
+                            ahrs.get_pitch(),
+                            ahrs.get_yaw(),
+                            omega.x, // rollspeed
+                            omega.y, // pitchspeed
+                            omega.z, // yawspeed
+                            local_position.x,
+                            local_position.y,
+                            local_position.z,
+                            velocity.x,
+                            velocity.y,
+                            velocity.z,
+                            air_speed,
+                            battery.gcs_voltage(0),
+                            current,
+                            values[0],
+                            values[1],
+                            values[2],
+                            values[3],
+                            values[4],
+                            values[5],
+                            values[6],
+                            values[7]);
+}
 // try to send a message, return false if it won't fit in the serial tx buffer
 bool GCS_MAVLINK_Plane::try_send_message(enum ap_message id)
 {
     switch (id) {
+
+    case MSG_FC_DAT:
+        send_FC_dat();  //这个需要一一对应
+        break;
 
     case MSG_SERVO_OUT:
         // unused

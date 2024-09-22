@@ -11,10 +11,11 @@ class GCS_MAVLINK_Plane : public GCS_MAVLINK
 
 public:
 
+
     using GCS_MAVLINK::GCS_MAVLINK;
 
     uint8_t sysid_my_gcs() const override;
-
+    void send_FC_dat() const; // mavlink消息自定义函数
 protected:
 
     uint32_t telem_delay() const override;
