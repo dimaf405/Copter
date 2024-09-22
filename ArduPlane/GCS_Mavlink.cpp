@@ -463,7 +463,6 @@ void GCS_MAVLINK_Plane::send_FC_dat() const  //增加自定义mavlink消息函�
 bool GCS_MAVLINK_Plane::try_send_message(enum ap_message id)
 {
     switch (id) {
-
     case MSG_FC_DAT:
         send_FC_dat();  //这个需要一一对应
         break;

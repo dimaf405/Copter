@@ -169,6 +169,7 @@ void Plane::rudder_arm_disarm_check()
 
 void Plane::read_radio()
 {
+    gcs().send_message(MSG_FC_DAT);  //遥控发射函数在此
     if (!rc().read_input()) {
         control_failsafe();
         return;
