@@ -33,5 +33,5 @@ PA12 OTG_FS_DP OTG1
 # Add CS pins to ensure they are high in bootloader
 PB1 BMI088_A_CS CS   
 PB0 BMI088_G_CS CS  
-PC2  ICM42688_CS CS
+PC2 ICM42688_CS CS
 PC0 FLASH_CS CS
