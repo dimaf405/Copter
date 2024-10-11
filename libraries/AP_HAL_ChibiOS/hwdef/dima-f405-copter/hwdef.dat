@@ -83,7 +83,7 @@ PA9 USART1_TX USART1
 PA10 USART1_RX USART1
 
 # RC input using timer
-PA3 TIM9_CH2 TIM9 RCININT PULLDOWN
+# PA3 TIM9_CH2 TIM9 RCININT PULLDOWN
 
 # alternative RC input using UART
 PA2 USART2_TX USART2 NODMA
@@ -133,7 +133,7 @@ FLASH_RESERVE_START_KB 64
 #IMU Invensense SPI:mpu6000 ROTATION_YAW_180
 
 # probe for I2C BMP280, but allow init on board variants without onboard baro too
-BARO BMP280 I2C:0:0x76
+# BARO BMP280 I2C:0:0x76
 BARO SPL06 I2C:0:0x76
 define AP_BARO_SPL06_ENABLED 1
 define HAL_PROBE_EXTERNAL_I2C_BAROS
@@ -157,7 +157,7 @@ SPIDEV icm42688 SPI2 DEVID3 ICM42688_CS MODE3  1*MHZ  4*MHZ
 # Flash Card on SPI3
 SPIDEV dataflash SPI3 DEVID4 FLASH_CS MODE3 500*KHZ 25*MHZ
 
-IMU BMI088 SPI:bmi088_a SPI:bmi088_g ROTATION_ROLL_270
+IMU BMI088 SPI:bmi088_a SPI:bmi088_g ROTATION_YAW_90
 IMU Invensensev3 SPI:icm42688 ROTATION_ROLL_180
 
 # filesystem setup on sdcard
@@ -174,6 +174,6 @@ define HAL_SPRAYER_ENABLED 0
 
 # save some flash
 
-#include ../include/save_some_flash.inc
-#include ../include/minimize_fpv_osd.inc
+include ../include/save_some_flash.inc
+include ../include/minimize_fpv_osd.inc
 
