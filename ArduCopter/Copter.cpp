@@ -276,11 +276,15 @@ bool Copter::start_takeoff(float alt)
     //     return false;
     // }
 
-    if (mode_guided.do_user_takeoff_start(alt * 100.0f)) {
-        copter.set_auto_armed(true);
-        return true;
+   // if (mode_guided.do_user_takeoff_start(alt * 100.0f)) {
+    //     copter.set_auto_armed(true);
+    //     return true;
+    // }
+    if (!copter.flightmode->do_user_takeoff(takeoff_alt, is_zero(packet.param3)))
+    {
+        return false;
     }
-    return false;
+    return true;
 }
 
 // set target location (for use by scripting)
