@@ -5,7 +5,7 @@
 #include <AP_HAL/AP_HAL.h>
 extern const AP_HAL::HAL &hal;
 // extern __mavlink_rc_channels_t copter_rec_rc;
-extern uint16_t *copter_rec_chan;
+// extern uint16_t *copter_rec_chan;
 class Copter_Rc
 {
 private:

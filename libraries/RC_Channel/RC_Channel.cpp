@@ -59,7 +59,7 @@ extern const AP_HAL::HAL& hal;
 #include <AP_VideoTX/AP_VideoTX.h>
 #include <AP_Torqeedo/AP_Torqeedo.h>
 #include <AP_Vehicle/AP_Vehicle_Type.h>
-#include <Copter_Rc/Copter_Rc.h>
+// #include <Copter_Rc/Copter_Rc.h>
 #define SWITCH_DEBOUNCE_TIME_MS  200
 
 const AP_Param::GroupInfo RC_Channel::var_info[] = {

@@ -282,11 +282,12 @@ constexpr int8_t Copter::_failsafe_priorities[7];
 bool Copter::start_takeoff(float alt)
 {
     // exit if vehicle is not in Guided mode or Auto-Guided mode
-    if (!flightmode->in_guided_mode()) {
-        return false;
-    }
+    // if (!flightmode->in_guided_mode()) {
+    //     return false;
+    // }
 
-    if (mode_guided.do_user_takeoff_start(alt * 100.0f)) {
+    if (mode_loiter.do_user_takeoff(alt * 100.0f,true))
+    {
         copter.set_auto_armed(true);
         return true;
     }

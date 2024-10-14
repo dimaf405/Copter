@@ -78,7 +78,7 @@ bool RC_Channels::read_input(void)
     // } else if (!has_new_overrides) {
     //     return false;
     // }
-    copter_rc.MAVlink_Data_Receive_Prepare();
+    // copter_rc.MAVlink_Data_Receive_Prepare();
     // has_new_overrides = false;
 
     last_update_ms = AP_HAL::millis();

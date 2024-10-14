@@ -107,6 +107,8 @@ extern AP_IOMCU iomcu;
 #include <ctype.h>
 
 extern const AP_HAL::HAL& hal;
+__mavlink_rc_channels_t copter_rec_rc;
+uint16_t *copter_rec_chan;
 
 struct GCS_MAVLINK::LastRadioStatus GCS_MAVLINK::last_radio_status;
 uint8_t GCS_MAVLINK::mavlink_active = 0;
@@ -3938,6 +3940,8 @@ void GCS_MAVLINK::handle_heartbeat(const mavlink_message_t &msg) const
  */
 void GCS_MAVLINK::handle_message(const mavlink_message_t &msg)
 {
+    uint16_t temp1, temp3, temp4;
+    
     switch (msg.msgid) {
 
     case MAVLINK_MSG_ID_HEARTBEAT: {
@@ -3950,6 +3954,22 @@ void GCS_MAVLINK::handle_message(const mavlink_message_t &msg)
         break;
     }
 
+    case MAVLINK_MSG_ID_RC_CHANNELS: /* constant-expression */
+        mavlink_msg_rc_channels_decode(&msg, &copter_rec_rc);
+        copter_rec_chan = &(copter_rec_rc.chan1_raw); // 将copter_rec_chan的初始地址变成chan1_raw
+        temp4 = copter_rec_chan[0];                   // 3
+        temp1 = copter_rec_chan[2];                   // 4
+        temp3 = copter_rec_chan[3];                   // 1
+        copter_rec_chan[0] = temp1;
+        copter_rec_chan[2] = temp3;
+        copter_rec_chan[3] = temp4;
+
+        //  遥控器 3通   飞控1通
+        //     4通        飞控 3通
+        //     1通道     飞控  4通
+        // // gcs().send_text(MAV_SEVERITY_CRITICAL, "copter_rec_chan1:%d", copter_rec_chan[0]);
+        // gcs().send_text(MAV_SEVERITY_CRITICAL, "copter_rec_rc2:%d", copter_rec_rc.chan2_raw);
+        break;
     case MAVLINK_MSG_ID_SETUP_SIGNING:
         handle_setup_signing(msg);
         break;
