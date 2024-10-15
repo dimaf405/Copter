@@ -768,7 +768,9 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_long_packet(const mavlink_command_
 
         float takeoff_alt = packet.param7 * 100;      // Convert m to cm
 
-        if (!copter.flightmode->do_user_takeoff(takeoff_alt, is_zero(packet.param3))) {
+        if (!copter.flightmode.do_user_takeoff(takeoff_alt, is_zero(packet.param3)))
+        {
+            // gcs().send_text(MAV_SEVERITY_CRITICAL, "takeoff_alt:%f", takeoff_alt);
             return MAV_RESULT_FAILED;
         }
         return MAV_RESULT_ACCEPTED;
