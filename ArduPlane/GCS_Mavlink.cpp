@@ -422,17 +422,25 @@ void GCS_MAVLINK_Plane::send_FC_dat() const  //增加自定义mavlink消息函�
     float air_speed = vfr_hud_airspeed();
     const AP_BattMonitor &battery = AP::battery();
     uint16_t values[8] = {};
+    float current;
     rc().get_radio_in(values, ARRAY_SIZE(values));
 
-    float current;
-    if (battery.current_amps(current, 1))
+    if (!ahrs.get_relative_position_NED_origin(local_position) ||
+        !ahrs.get_velocity_NED(velocity)) {
+        // we don't know the position and velocity
+        local_position = Vector3f(0,0,0);
+        velocity = Vector3f(0, 0, 0);
+    }
+    
+    if (battery.current_amps(current))
     {
-        current = constrain_float(current, -INT16_MAX, INT16_MAX); // 10*mA
+        current = constrain_float(current * 100, -INT16_MAX, INT16_MAX);
     }
     else
     {
         current = -1;
     }
+
     mavlink_msg_fc_dat_send(chan,  //这个函数在生成文件夹下面增加send的
                             AP_HAL::micros(),
                             ahrs.get_roll(),
