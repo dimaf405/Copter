@@ -61,6 +61,8 @@
 #include "MissionItemProtocol_Fence.h"
 
 #include <stdio.h>
+__mavlink_rc_channels_t copter_rec_rc;  
+uint16_t *copter_rec_chan; //遥控器信息
 
 #if HAL_RCINPUT_WITH_AP_RADIO
 #include <AP_Radio/AP_Radio.h>
@@ -3826,6 +3828,7 @@ void GCS_MAVLINK::handle_common_message(const mavlink_message_t &msg)
         handle_system_time_message(msg);
         break;
 
+    
     case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE:
         handle_rc_channels_override(msg);
         break;
