@@ -440,7 +440,7 @@ void GCS_MAVLINK_Plane::send_FC_dat() const  //增加自定义mavlink消息函�
     {
         current = -1;
     }
-
+    // gcs().send_text(MAV_SEVERITY_CRITICAL ,"current:%f", current);
     mavlink_msg_fc_dat_send(chan,  //这个函数在生成文件夹下面增加send的
                             AP_HAL::micros(),
                             ahrs.get_roll(),
