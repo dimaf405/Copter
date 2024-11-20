@@ -182,6 +182,12 @@ define HAL_SPRAYER_ENABLED 0
 
 # save some flash
 
-include ../include/save_some_flash.inc
+# include ../include/save_some_flash.inc
+define HAL_GENERATOR_ENABLED 0
+define AC_OAPATHPLANNER_ENABLED 0
+define PRECISION_LANDING 0
+#define AP_OPTICALFLOW_ENABLED 0
+define AP_ICENGINE_ENABLED 0
+define HAL_BARO_WIND_COMP_ENABLED 0
 
 

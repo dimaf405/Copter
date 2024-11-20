@@ -3,11 +3,11 @@
 // uncomment the lines below to disable features (flash sizes listed are for APM2 boards and will underestimate savings on Pixhawk and other boards)
 //#define LOGGING_ENABLED       DISABLED            // disable logging to save 11K of flash space
 //#define MOUNT                 DISABLED            // disable the camera gimbal to save 8K of flash space
-//#define AUTOTUNE_ENABLED      DISABLED            // disable the auto tune functionality to save 7k of flash
+#define AUTOTUNE_ENABLED      DISABLED            // disable the auto tune functionality to save 7k of flash
 //#define RANGEFINDER_ENABLED   DISABLED            // disable rangefinder to save 1k of flash
 //#define AC_AVOID_ENABLED      DISABLED            // disable stop-at-fence library
 //#define AC_OAPATHPLANNER_ENABLED DISABLED         // disable path planning around obstacles
-//#define PARACHUTE             DISABLED            // disable parachute release to save 1k of flash
+#define PARACHUTE             DISABLED            // disable parachute release to save 1k of flash
 //#define NAV_GUIDED            DISABLED            // disable external navigation computer ability to control vehicle through MAV_CMD_NAV_GUIDED mission commands
 //#define PRECISION_LANDING     DISABLED            // disable precision landing using companion computer or IRLock sensor
 //#define BEACON_ENABLED        DISABLED            // disable beacon support
