@@ -216,15 +216,15 @@ uint32_t AP_GPS_NMEA::_parse_degrees()
 /*
   see if we have a new set of NMEA messages
  */
-bool AP_GPS_NMEA::_have_new_message()
+bool AP_GPS_NMEA::_have_new_message()   //更改接受频率为10HZ
 {
     if (_last_RMC_ms == 0 ||
         _last_GGA_ms == 0) {
         return false;
     }
     uint32_t now = AP_HAL::millis();
-    if (now - _last_RMC_ms > 150 ||
-        now - _last_GGA_ms > 150) {
+    if (now - _last_RMC_ms > 250 ||
+        now - _last_GGA_ms > 250) {
         return false;
     }
     if (_last_VTG_ms != 0 && 
