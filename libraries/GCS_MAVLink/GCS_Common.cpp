@@ -4397,7 +4397,7 @@ void GCS_MAVLINK::handle_heartbeat(const mavlink_message_t &msg) const
  */
 void GCS_MAVLINK::handle_message(const mavlink_message_t &msg)
 {
-    gcs().send_text(MAV_SEVERITY_INFO, "msg.msgid:%d", msg.msgid);
+    // gcs().send_text(MAV_SEVERITY_INFO, "msg.msgid:%d", msg.msgid);
     switch (msg.msgid)
     {
 
