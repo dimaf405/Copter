@@ -634,7 +634,7 @@ void GCS_MAVLINK_Sub::handle_message(const mavlink_message_t &msg)
         // a RC override message is considered to be a 'heartbeat'
         // from the ground station for failsafe purposes
 
-        handle_rc_channels_override(msg);
+        handle_rc_channels(msg);
         break;
     }
 
