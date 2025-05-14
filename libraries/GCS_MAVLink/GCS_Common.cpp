@@ -4233,8 +4233,8 @@ void GCS_MAVLINK::handle_rc_channels(const mavlink_message_t &msg)
     const uint16_t override_data[] = {
         packet.chan1_raw,
         packet.chan2_raw,
-        packet.chan4_raw, // 遥控器通2、4到对换
-        packet.chan3_raw,
+        packet.chan3_raw, // 遥控器通2、4到对换
+        packet.chan4_raw,
         packet.chan5_raw,
         packet.chan6_raw,
         packet.chan7_raw,
