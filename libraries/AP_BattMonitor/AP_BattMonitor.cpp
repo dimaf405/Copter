@@ -22,7 +22,7 @@
 #include "AP_BattMonitor_Synthetic_Current.h"
 #include "AP_BattMonitor_AD7091R5.h"
 #include "AP_BattMonitor_Scripting.h"
-
+#include "mavlink_bms.h"
 #include <AP_HAL/AP_HAL.h>
 
 #if HAL_ENABLE_DRONECAN_DRIVERS
@@ -561,8 +561,12 @@ AP_BattMonitor::init()
                 drivers[instance] = new AP_BattMonitor_AD7091R5(*this, state[instance], _params[instance]);
                 break;
 #endif// AP_BATTERY_AD7091R5_ENABLED
+
+            case Type::MAVLINK_BMS:
+                drivers[instance] = new mavlink_bms(*this, state[instance], _params[instance]);
+                break;
 #if AP_BATTERY_SCRIPTING_ENABLED
-            case Type::Scripting:
+                case Type::Scripting:
                 drivers[instance] = new AP_BattMonitor_Scripting(*this, state[instance], _params[instance]);
                 break;
 #endif // AP_BATTERY_SCRIPTING_ENABLED

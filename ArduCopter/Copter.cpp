@@ -508,6 +508,10 @@ void Copter::throttle_loop()
 // should be called at 10hz
 void Copter::update_batt_compass(void)
 {
+    // Assuming mavlink_bms is abstract, replace with a derived class or remove if unnecessary
+    // Example: Replace with a derived class that implements all pure virtual functions
+    // DerivedMavlinkBms bms;
+    // bms.rec_bms();
     // read battery before compass because it may be used for motor interference compensation
     battery.read();
 
