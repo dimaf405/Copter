@@ -23,7 +23,18 @@ void mavlink_bms::rec_bms()
         {
             mavlink_battery_status_t pack;
             mavlink_msg_battery_status_decode(&msg, &pack);
-        
+            // _state.cell_voltages.cells[0] = pack.voltages[0];
+            // _state.cell_voltages.cells[1] = pack.voltages[1];
+            // _state.cell_voltages.cells[2] = pack.voltages[2];
+            // _state.cell_voltages.cells[3] = pack.voltages[3];
+            // _state.cell_voltages.cells[4] = pack.voltages[4];
+            // _state.cell_voltages.cells[5] = pack.voltages[5];
+            // _state.cell_voltages.cells[6] = pack.voltages[6];
+            // _state.cell_voltages.cells[7] = pack.voltages[7]; 
+            // _state.cell_voltages.cells[8] = pack.voltages[8];
+            // _state.cell_voltages.cells[9] = pack.voltages[9];
+            // _state.cell_voltages.cells[10] = pack.voltages[10];
+              
         }
     }
 }

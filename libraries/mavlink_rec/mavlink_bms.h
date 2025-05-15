@@ -2,6 +2,8 @@
 #ifndef MAVLINK_BMS_H
 #define MAVLINK_BMS_H
 #include <AP_HAL/AP_HAL.h>
+#include <AP_BattMonitor/AP_BattMonitor.h>
+#include <AP_BattMonitor/AP_BattMonitor_Backend.h>
 #define MAVLINK_BMS_BUFFER_SIZE 128
 #define MAVLINK_BMS_PAYLOAD_SIZE 128
 extern const AP_HAL::HAL &hal;
