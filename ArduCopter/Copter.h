@@ -71,9 +71,7 @@
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
 #include <AC_PrecLand/AC_PrecLand_config.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
-#include <AP_Winch/AP_Winch_config.h>
-#include <mavlink_rec/mavlink_bms.h>        //添加测量BMS信息头文件
-// Configuration
+#include <AP_Winch/AP_Winch_config.h>// Configuration
 #include "defines.h"
 #include "config.h"
 
@@ -252,7 +250,6 @@ private:
     RC_Channel *channel_throttle;
     RC_Channel *channel_yaw;
 
-    // 增加bms的信息接收
  
 #if HAL_LOGGING_ENABLED
     AP_Logger logger;

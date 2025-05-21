@@ -562,9 +562,6 @@ AP_BattMonitor::init()
                 break;
 #endif// AP_BATTERY_AD7091R5_ENABLED
 
-            case Type::MAVLINK_BMS:
-                drivers[instance] = new mavlink_bms(*this, state[instance], _params[instance]);
-                break;
 #if AP_BATTERY_SCRIPTING_ENABLED
                 case Type::Scripting:
                 drivers[instance] = new AP_BattMonitor_Scripting(*this, state[instance], _params[instance]);

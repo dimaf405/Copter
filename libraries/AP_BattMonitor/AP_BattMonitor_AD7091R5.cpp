@@ -22,7 +22,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
-
+#include <GCS_MAVLink/GCS.h>
 //macro defines
 #define AD7091R5_I2C_ADDR        0x2F // A0 and A1 tied to GND
 #define AD7091R5_I2C_BUS         0
@@ -117,32 +117,32 @@ AP_BattMonitor_AD7091R5::AP_BattMonitor_AD7091R5(AP_BattMonitor &mon,
  */
 void AP_BattMonitor_AD7091R5::init()
 {
-    // voltage and current pins from params and check if there are in range
-    if (_volt_pin.get() >= AD7091R5_BASE_PIN && _volt_pin.get() <= AD7091R5_BASE_PIN + AD7091R5_NO_OF_CHANNELS && 
-    _curr_pin.get() >= AD7091R5_BASE_PIN && _curr_pin.get() <= AD7091R5_BASE_PIN + AD7091R5_NO_OF_CHANNELS) {
-        volt_buff_pt = _volt_pin.get() - AD7091R5_BASE_PIN;
-        curr_buff_pt = _curr_pin.get() - AD7091R5_BASE_PIN;
-    }
-    else{
-        return; //pin values are out of range
-    }
+    // // voltage and current pins from params and check if there are in range
+    // if (_volt_pin.get() >= AD7091R5_BASE_PIN && _volt_pin.get() <= AD7091R5_BASE_PIN + AD7091R5_NO_OF_CHANNELS && 
+    // _curr_pin.get() >= AD7091R5_BASE_PIN && _curr_pin.get() <= AD7091R5_BASE_PIN + AD7091R5_NO_OF_CHANNELS) {
+    //     volt_buff_pt = _volt_pin.get() - AD7091R5_BASE_PIN;
+    //     curr_buff_pt = _curr_pin.get() - AD7091R5_BASE_PIN;
+    // }
+    // else{
+    //     return; //pin values are out of range
+    // }
 
-    // only the first instance read the i2c device
-    if (_first) {
-        _first = false;
-        // probe i2c device
-        _dev = hal.i2c_mgr->get_device(AD7091R5_I2C_BUS, AD7091R5_I2C_ADDR);
+    // // only the first instance read the i2c device
+    // if (_first) {
+    //     _first = false;
+    //     // probe i2c device
+    //     _dev = hal.i2c_mgr->get_device(AD7091R5_I2C_BUS, AD7091R5_I2C_ADDR);
 
-        if (_dev) {
-            WITH_SEMAPHORE(_dev->get_semaphore());
-            _dev->set_retries(10); // lots of retries during probe
-            //Reset and config device
-            if (_initialize()) {
-                _dev->set_retries(2); // drop to 2 retries for runtime
-                _dev->register_periodic_callback(AD7091R5_PERIOD_USEC, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_AD7091R5::_read_adc, void));
-            }
-        }
-    }
+    //     if (_dev) {
+    //         WITH_SEMAPHORE(_dev->get_semaphore());
+    //         _dev->set_retries(10); // lots of retries during probe
+    //         //Reset and config device
+    //         if (_initialize()) {
+    //             _dev->set_retries(2); // drop to 2 retries for runtime
+    //             _dev->register_periodic_callback(AD7091R5_PERIOD_USEC, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_AD7091R5::_read_adc, void));
+    //         }
+    //     }
+    // }
 }
 
 /**
@@ -152,21 +152,16 @@ void AP_BattMonitor_AD7091R5::init()
 void AP_BattMonitor_AD7091R5::read()
 {
 
-    WITH_SEMAPHORE(sem);
-    //copy global health status to all instances
-    _state.healthy = _health;
+    // WITH_SEMAPHORE(sem);
+    // //copy global health status to all instances
+    // _state.healthy = _health;
 
-    //return if system not healthy
-    if (!_state.healthy) {
-        return;
-    }
-
-    //voltage conversion
-    _state.voltage = (_data_to_volt(_analog_data[volt_buff_pt].data) - _volt_offset) * _volt_multiplier;
-
-    //current amps conversion
-    _state.current_amps = (_data_to_volt(_analog_data[curr_buff_pt].data) - _curr_amp_offset) * _curr_amp_per_volt;
-
+    // //return if system not healthy
+    // if (!_state.healthy) {
+    //     return;
+    // }
+    // gcs().send_text(MAV_SEVERITY_NOTICE, "Reading from rce_bms");
+    rec_bms();
     // calculate time since last current read
     uint32_t tnow = AP_HAL::micros();
     uint32_t dt_us = tnow - _state.last_time_micros;
@@ -231,6 +226,40 @@ bool AP_BattMonitor_AD7091R5::_initialize()
 float AP_BattMonitor_AD7091R5::_data_to_volt(uint32_t data)
 {
     return (AD7091R5_REF/AD7091R5_RESOLUTION)*data;
+}
+
+void AP_BattMonitor_AD7091R5::rec_bms()
+{
+    mavlink_status_t status;
+    mavlink_message_t msg;
+    int chan = 0;
+
+    while (hal.serial(5)->available() > 0)
+    {
+        uint8_t byte = hal.serial(5)->read();
+        if (mavlink_parse_char(chan, byte, &msg, &status))
+        {
+            mavlink_battery_status_t pack;
+            mavlink_msg_battery_status_decode(&msg, &pack);
+            _state.cell_voltages.cells[0] = pack.voltages[0];
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "Cell 0: %d", pack.voltages[0]);
+            _state.cell_voltages.cells[1] = pack.voltages[1];
+            _state.cell_voltages.cells[2] = pack.voltages[2];
+            _state.cell_voltages.cells[3] = pack.voltages[3];
+            _state.cell_voltages.cells[4] = pack.voltages[4];
+            _state.cell_voltages.cells[5] = pack.voltages[5];
+            _state.cell_voltages.cells[6] = pack.voltages[6];
+            _state.cell_voltages.cells[7] = pack.voltages[7];
+            _state.cell_voltages.cells[8] = pack.voltages[8];
+            _state.cell_voltages.cells[9] = pack.voltages[9];
+            _state.temperature = pack.temperature;
+            _state.current_amps = pack.current_battery;
+            _state.consumed_mah = pack.current_consumed;
+            _state.consumed_wh = pack.energy_consumed;
+            _state.time_remaining = pack.time_remaining;
+            _state.instance = pack.id;
+        }
+    }
 }
 
 #endif // AP_BATTERY_AD7091R5_ENABLED

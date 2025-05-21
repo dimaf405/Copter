@@ -43,6 +43,7 @@ class AP_BattMonitor_INA2XX;
 class AP_BattMonitor_INA239;
 class AP_BattMonitor_LTC2946;
 class AP_BattMonitor_Torqeedo;
+class mavlink_bms;
 class AP_BattMonitor_FuelLevel_Analog;
 class AP_BattMonitor_EFI;
 class AP_BattMonitor_Scripting;
@@ -66,7 +67,7 @@ class AP_BattMonitor
     friend class AP_BattMonitor_INA239;
     friend class AP_BattMonitor_LTC2946;
     friend class AP_BattMonitor_AD7091R5;
-
+    friend class mavlink_bms;
     friend class AP_BattMonitor_Torqeedo;
     friend class AP_BattMonitor_FuelLevel_Analog;
     friend class AP_BattMonitor_Synthetic_Current;

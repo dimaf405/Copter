@@ -1,18 +1,40 @@
 #include "mavlink_bms.h"
 #include <GCS_MAVLink/GCS.h>
+#include <AP_Common/AP_Common.h>
+#include <SRV_Channel/SRV_Channel.h>
+extern const AP_HAL::HAL &hal;
+
+const AP_Param::GroupInfo mavlink_bms::var_info[] = {
+
+    // @Param: MAX_VOLT
+    // @DisplayName: Maximum Battery Voltage
+    // @Description: Maximum voltage of battery. Provides scaling of current versus voltage
+    // @Range: 7 100
+    // @User: Advanced
+
+    AP_GROUPEND};
+
+/// Constructor
 mavlink_bms::mavlink_bms(AP_BattMonitor &mon,
                          AP_BattMonitor::BattMonitor_State &mon_state,
                          AP_BattMonitor_Params &params) : AP_BattMonitor_Backend(mon, mon_state, params)
 {
-    ;
+    AP_Param::setup_object_defaults(this, var_info);
+    _state.var_info = var_info;
 }
-void mavlink_bms::init()
+void mavlink_bms::read(void)
 {
-    // Initialize the serial port for MAVLink communication
-    hal.serial(5)->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
-    hal.serial(5)->begin(115200); // Set the baud rate to 57600
-    // serial.setTimeout(1000); // Set a timeout for reading data
+    rec_bms();
 }
+
+
+// void mavlink_bms::init()
+// {
+//     // Initialize the serial port for MAVLink communication
+//     hal.serial(5)->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+//     hal.serial(5)->begin(115200); // Set the baud rate to 57600
+//     // serial.setTimeout(1000); // Set a timeout for reading data
+// }
 
 
 void mavlink_bms::rec_bms()
