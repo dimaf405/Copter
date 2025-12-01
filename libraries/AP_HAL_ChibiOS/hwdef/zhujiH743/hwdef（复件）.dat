@@ -1,0 +1,170 @@
+# hw definition file for processing by chibios_hwdef.py
+# mRo Nexus CAN flight controller
+# A Dual CAN based flight controller / CAN IMU
+# 36mm x 36mm, 31.5mm x 31.5mm grommeted mounting holes
+# M10084
+
+# MCU class and specific type
+MCU STM32H7xx STM32H743xx
+
+# board ID for firmware load
+APJ_BOARD_ID 666
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+
+FLASH_SIZE_KB 2048
+
+
+
+# with 2M flash we can afford to optimize for speed
+env OPTIMIZE -O2
+
+# start on 2th sector (1st sector for bootloader)
+FLASH_RESERVE_START_KB 128
+
+# use FRAM for storage
+#define HAL_STORAGE_SIZE 32768
+#define HAL_WITH_RAMTRON 1
+
+# USB setup
+USB_STRING_MANUFACTURER "zhuji"
+
+# Order of I2C buses
+I2C_ORDER I2C1
+
+# order of UARTs (and USB)
+# OTG1 	SERIAL0
+# UART4 SERIAL3
+# UART7 SERIAL1
+# OTG2 	SERIAL2
+
+SERIAL_ORDER OTG1 USART3 UART4 UART5 UART8 
+
+# USB
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+
+# USART3 SERIAL0 (ADSB)
+PD9 USART3_RX USART3
+PD8 USART3_TX USART3
+
+# UART4 SERIAL1 (GPS)
+PB8 UART4_RX UART4
+PB9 UART4_TX UART4
+
+# UART5 SERIAL2 (U5)
+PB12 UART5_RX UART5
+PB13 UART5_TX UART5
+
+# UART8 SERIAL3 (COM)
+PE0 UART8_RX UART8
+PE1 UART8_TX UART8
+
+# VDD sense pin for the External 5v Supply
+#PA4 BATT_VOLTAGE_SENS ADC1 SCALE(1.65)
+
+# VDD sense pin for the CAN supplied 5v Supply
+#PA3 VDD_5V_SENS ADC1 SCALE(1.65)
+
+#SPI1 SPIBus0 (2 device ICM-40609-D)
+PB3 SPI1_SCK SPI1
+PB4 SPI1_MISO SPI1
+PB5 SPI1_MOSI SPI1
+PD4 ICM40609D_0_CS CS
+PE2 ICM40609D_1_CS CS
+
+#SPI4 SPIBus1 (1 devices FLASH)
+PE12 SPI4_SCK SPI4
+PE13 SPI4_MISO SPI4
+PE14 SPI4_MOSI SPI4
+PE11  FLASH_CS CS
+
+# This input pin is used to detect that power is valid on USB.
+PA9 VBUS_VALID INPUT
+
+# These are the pins for SWD debugging with a STlinkv2 or black-magic probe.
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# Now the first I2C bus. The pin speeds are automatically setup
+# correctly, but can be overridden here if needed.
+PB6 I2C1_SCL I2C1
+PB7 I2C1_SDA I2C1
+
+# this board only has a single I2C bus so make it external
+define HAL_I2C_INTERNAL_MASK 0
+
+# Now setup the pins for the microSD card, if available.
+#PC8  SDMMC1_D0 SDMMC1
+#PC9  SDMMC1_D1 SDMMC1
+#PC10 SDMMC1_D2 SDMMC1
+#PC11 SDMMC1_D3 SDMMC1
+#PC12 SDMMC1_CK SDMMC1
+#PD2  SDMMC1_CMD SDMMC1
+
+
+# the first CAN bus
+#PB9 CAN1_TX CAN1
+#PB8 CAN1_RX CAN1
+
+#PE0 GPIO_CAN1_SILENT OUTPUT PUSHPULL LOW GPIO(72)
+
+# This defines the pins for the 2nd CAN interface.
+#PB6 CAN2_TX CAN2
+#PB5 CAN2_RX CAN2
+
+#PB7 GPIO_CAN2_SILENT OUTPUT PUSHPULL LOW GPIO(73)
+
+# This is the invensense data-ready pin. We don't use it in the
+# default driver.
+#PD8  DRDY_ADIS16470 INPUT GPIO(93)
+#PE13 DRDY_ICM40609D INPUT 
+#PC13 DRDY_RM3100 INPUT
+
+#define HAL_DRDY_ADIS16470_PIN 93
+
+# This is the reset line for the adis16470
+#PB1 nRST_ADIS OUTPUT HIGH GPIO(74)
+
+# This is the pin to enable the sensors rail. It can be used to power
+# cycle sensors to recover them in case there are problems with power on
+# timing affecting sensor stability. We pull it high by default.
+
+#SPI3 Devices ICM40609 and RM3100
+#PC6 SENSORS_SPI3_EN OUTPUT HIGH 
+
+#SPI4 Devices DPS310 and FRAM
+#PC7 SENSORS_SPI4_EN OUTPUT HIGH 
+
+SPIDEV icm40609d SPI1 DEVID1  ICM40609D_0_CS      MODE3  16*MHZ 16*MHZ 
+#SPIDEV icm40609d_1 SPI1 DEVID2  ICM40609D_1_CS      MODE3  16*MHZ 16*MHZ
+SPIDEV dataflash SPI4 DEVID1 FLASH_CS      MODE3  32*MHZ 32*MHZ
+
+# enable logging to dataflash
+define HAL_LOGGING_DATAFLASH_ENABLED 1
+define HAL_LOGGING_DATAFLASH_DRIVER AP_Logger_Flash_JEDEC
+define HAL_LOGGING_FLASH_JEDEC_ENABLED 1
+
+# allow to have have a dedicated safety switch pin
+define HAL_HAVE_SAFETY_SWITCH 0
+
+# 2 IMUs (Analog Devices ADIS16470 and Invensense / TDK ICM40609D)
+IMU Invensensev3   SPI:icm40609d ROTATION_NONE
+#IMU Invensensev3   SPI:icm40609d_1 ROTATION_NONE
+
+# enable SPL06 baro
+BARO SPL06 I2C:0:0x76
+define AP_BARO_SPL06_ENABLED 1
+
+# compass
+define HAL_PROBE_EXTERNAL_I2C_COMPASSES
+define HAL_SKIP_AUTO_INTERNAL_I2C_PROBE
+define HAL_COMPASS_DISABLE_IST8310_INTERNAL_PROBE
+define AP_COMPASS_IST8310_DEFAULT_ROTATION ROTATION_ROLL_180_YAW_90
+COMPASS IST8310 I2C:0:0x0E false ROTATION_ROLL_90_YAW_90
+COMPASS IST8310 I2C:ALL_EXTERNAL:0x0E true ROTATION_ROLL_180_YAW_90
+
+
+

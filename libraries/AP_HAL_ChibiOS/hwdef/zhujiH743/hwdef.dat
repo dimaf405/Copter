@@ -1,0 +1,152 @@
+# hw definition file for processing by chibios_hwdef.py
+# mRo Nexus CAN flight controller
+# A Dual CAN based flight controller / CAN IMU
+# 36mm x 36mm, 31.5mm x 31.5mm grommeted mounting holes
+# M10084
+
+# MCU class and specific type
+MCU STM32H7xx STM32H743xx
+
+# board ID for firmware load
+APJ_BOARD_ID 666
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+
+FLASH_SIZE_KB 2048
+
+# with 2M flash we can afford to optimize for speed
+env OPTIMIZE -O2
+
+# start on 2th sector (1st sector for bootloader)
+FLASH_RESERVE_START_KB 128
+
+# use FRAM for storage
+define HAL_STORAGE_SIZE 32768
+define HAL_WITH_RAMTRON 1
+
+# USB setup
+USB_STRING_MANUFACTURER "mRo"
+
+# Order of I2C buses
+I2C_ORDER I2C1
+
+# order of UARTs (and USB)
+# OTG1 	SERIAL0
+# USART3 SERIAL3
+# UART7 SERIAL4
+# OTG2 	SERIAL5
+# UART8 SERIAL8
+
+SERIAL_ORDER OTG1 USART3 UART4 UART5 UART8 
+
+# This input pin is used to detect that power is valid on USB.
+PA9 VBUS_VALID INPUT
+
+# USB
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+
+# USART3 SERIAL0 (ADSB)
+PD9 USART3_RX USART3
+PD8 USART3_TX USART3
+
+# UART4 SERIAL1 (GPS)
+PB8 UART4_RX UART4
+PB9 UART4_TX UART4
+
+# UART5 SERIAL2 (U5)
+PB12 UART5_RX UART5
+PB13 UART5_TX UART5
+
+# UART8 SERIAL3 (COM)
+PE0 UART8_RX UART8
+PE1 UART8_TX UART8
+
+
+# VDD sense pin for the External 5v Supply
+PA4 BATT_VOLTAGE_SENS ADC1 SCALE(1.65)
+
+# VDD sense pin for the CAN supplied 5v Supply
+#PA3 VDD_5V_SENS ADC1 SCALE(1.65)
+
+#SPI1 SPIBus0 (2 device ICM-40609-D)
+PB3 SPI1_SCK SPI1
+PB4 SPI1_MISO SPI1
+PB5 SPI1_MOSI SPI1
+PD4 ICM40609D_0_CS CS
+PE2 ICM40609D_1_CS CS
+
+#SPI4 SPIBus1 (1 devices FLASH)
+PE12 SPI4_SCK SPI4
+PE13 SPI4_MISO SPI4
+PE14 SPI4_MOSI SPI4
+PE11  FLASH_CS CS
+
+
+# These are the pins for SWD debugging with a STlinkv2 or black-magic probe.
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# Now the first I2C bus. The pin speeds are automatically setup
+# correctly, but can be overridden here if needed.
+PB6 I2C1_SCL I2C1
+PB7 I2C1_SDA I2C1
+
+# this board only has a single I2C bus so make it external
+define HAL_I2C_INTERNAL_MASK 0
+
+# Now setup the pins for the microSD card, if available.
+PC8  SDMMC1_D0 SDMMC1
+PC9  SDMMC1_D1 SDMMC1
+PC10 SDMMC1_D2 SDMMC1
+PC11 SDMMC1_D3 SDMMC1
+PC12 SDMMC1_CK SDMMC1
+PD2  SDMMC1_CMD SDMMC1
+
+SPIDEV icm40609d SPI1 DEVID1  ICM40609D_0_CS      MODE3  16*MHZ 16*MHZ 
+#SPIDEV icm40609d_1 SPI1 DEVID2  ICM40609D_1_CS      MODE3  16*MHZ 16*MHZ
+SPIDEV dataflash SPI4 DEVID1 FLASH_CS      MODE3  32*MHZ 32*MHZ
+
+# enable logging to dataflash
+define HAL_LOGGING_DATAFLASH_ENABLED 1
+define HAL_LOGGING_DATAFLASH_DRIVER AP_Logger_Flash_JEDEC
+define HAL_LOGGING_FLASH_JEDEC_ENABLED 1
+
+# allow to have have a dedicated safety switch pin
+define HAL_HAVE_SAFETY_SWITCH 0
+
+# Enable FAT filesystem support (needs a microSD defined via SDMMC).
+define HAL_OS_FATFS_IO 1
+
+# Nexus has a TriColor LED like the Pixracer, Red, Green, Blue
+#define AP_NOTIFY_GPIO_LED_RGB_ENABLED 1
+
+# LED setup for PixracerLED driver
+#PA6 LED_R OUTPUT HIGH GPIO(0)
+#PA7 LED_G OUTPUT HIGH GPIO(1)
+#PB0 LED_B OUTPUT HIGH GPIO(2)
+
+#define AP_NOTIFY_GPIO_LED_RGB_RED_PIN 0
+#define AP_NOTIFY_GPIO_LED_RGB_GREEN_PIN 1
+#define AP_NOTIFY_GPIO_LED_RGB_BLUE_PIN 2
+
+# 2 IMUs (Analog Devices ADIS16470 and Invensense / TDK ICM40609D)
+#IMU ADIS1647x      SPI:adis16470 ROTATION_ROLL_180 HAL_DRDY_ADIS16470_PIN
+IMU Invensensev3   SPI:icm40609d ROTATION_NONE
+
+# enable SPL06 baro
+BARO SPL06 I2C:0:0x76
+define AP_BARO_SPL06_ENABLED 1
+
+# compass
+define HAL_PROBE_EXTERNAL_I2C_COMPASSES
+define HAL_SKIP_AUTO_INTERNAL_I2C_PROBE
+define HAL_COMPASS_DISABLE_IST8310_INTERNAL_PROBE
+define AP_COMPASS_IST8310_DEFAULT_ROTATION ROTATION_ROLL_180_YAW_90
+
+COMPASS IST8310 I2C:0:0x0E false ROTATION_ROLL_90_YAW_90
+COMPASS IST8310 I2C:ALL_EXTERNAL:0x0E true ROTATION_ROLL_180_YAW_90
+
+
