@@ -4036,10 +4036,10 @@ void GCS_MAVLINK::handle_rc_channels_override(const mavlink_message_t &msg)
 // 增加遥控器接受指令
 void GCS_MAVLINK::handle_rc_channels(const mavlink_message_t &msg)
 {
-    if (msg.sysid != sysid_my_gcs())
-    {
-        return; // Only accept control from our gcs
-    }
+    // if (msg.sysid != sysid_my_gcs())
+    // {
+    //     return; // Only accept control from our gcs
+    // }
 
     const uint32_t tnow = AP_HAL::millis();
 
@@ -4049,8 +4049,8 @@ void GCS_MAVLINK::handle_rc_channels(const mavlink_message_t &msg)
     const uint16_t override_data[] = {
         packet.chan1_raw,
         packet.chan2_raw,
-        packet.chan4_raw,
         packet.chan3_raw,
+        packet.chan4_raw,
         packet.chan5_raw,
         packet.chan6_raw,
         packet.chan7_raw,
@@ -4459,6 +4459,10 @@ void GCS_MAVLINK::handle_message(const mavlink_message_t &msg)
 #endif
 #endif
 
+    case MAVLINK_MSG_ID_RC_CHANNELS:
+        // gcs().send_text(MAV_SEVERITY_INFO, "correct recive RC");
+        handle_rc_channels(msg);
+        break;
 #if AP_OPTICALFLOW_ENABLED
     case MAVLINK_MSG_ID_OPTICAL_FLOW:
         handle_optical_flow(msg);
