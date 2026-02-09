@@ -4048,8 +4048,8 @@ void GCS_MAVLINK::handle_rc_channels(const mavlink_message_t &msg)
     // gcs().send_text(MAV_SEVERITY_INFO, "RC1:%d,chancount:%d,RSSI:%d", packet.chan1_raw, packet.chancount, packet.rssi);
     const uint16_t override_data[] = {
         packet.chan1_raw,
-        packet.chan2_raw,
         packet.chan3_raw,
+        packet.chan2_raw,
         packet.chan4_raw,
         packet.chan5_raw,
         packet.chan6_raw,
