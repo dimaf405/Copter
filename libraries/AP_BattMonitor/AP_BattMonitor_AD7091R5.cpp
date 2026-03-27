@@ -22,7 +22,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
-
+#include <GCS_MAVLink/GCS.h>
 //macro defines
 #define AD7091R5_I2C_ADDR        0x2F // A0 and A1 tied to GND
 #define AD7091R5_I2C_BUS         0
@@ -118,31 +118,7 @@ AP_BattMonitor_AD7091R5::AP_BattMonitor_AD7091R5(AP_BattMonitor &mon,
 void AP_BattMonitor_AD7091R5::init()
 {
     // voltage and current pins from params and check if there are in range
-    if (_volt_pin.get() >= AD7091R5_BASE_PIN && _volt_pin.get() <= AD7091R5_BASE_PIN + AD7091R5_NO_OF_CHANNELS && 
-    _curr_pin.get() >= AD7091R5_BASE_PIN && _curr_pin.get() <= AD7091R5_BASE_PIN + AD7091R5_NO_OF_CHANNELS) {
-        volt_buff_pt = _volt_pin.get() - AD7091R5_BASE_PIN;
-        curr_buff_pt = _curr_pin.get() - AD7091R5_BASE_PIN;
-    }
-    else{
-        return; //pin values are out of range
-    }
 
-    // only the first instance read the i2c device
-    if (_first) {
-        _first = false;
-        // probe i2c device
-        _dev = hal.i2c_mgr->get_device(AD7091R5_I2C_BUS, AD7091R5_I2C_ADDR);
-
-        if (_dev) {
-            WITH_SEMAPHORE(_dev->get_semaphore());
-            _dev->set_retries(10); // lots of retries during probe
-            //Reset and config device
-            if (_initialize()) {
-                _dev->set_retries(2); // drop to 2 retries for runtime
-                _dev->register_periodic_callback(AD7091R5_PERIOD_USEC, FUNCTOR_BIND_MEMBER(&AP_BattMonitor_AD7091R5::_read_adc, void));
-            }
-        }
-    }
 }
 
 /**
@@ -152,29 +128,31 @@ void AP_BattMonitor_AD7091R5::init()
 void AP_BattMonitor_AD7091R5::read()
 {
 
-    WITH_SEMAPHORE(sem);
-    //copy global health status to all instances
-    _state.healthy = _health;
+    // WITH_SEMAPHORE(sem);
+    // //copy global health status to all instances
+    // _state.healthy = _health;
 
-    //return if system not healthy
-    if (!_state.healthy) {
-        return;
-    }
+    // //return if system not healthy
+    // if (!_state.healthy) {
+    //     return;
+    // }
 
-    //voltage conversion
-    _state.voltage = (_data_to_volt(_analog_data[volt_buff_pt].data) - _volt_offset) * _volt_multiplier;
+    // //voltage conversion
+    // _state.voltage = (_data_to_volt(_analog_data[volt_buff_pt].data) - _volt_offset) * _volt_multiplier;
 
-    //current amps conversion
-    _state.current_amps = (_data_to_volt(_analog_data[curr_buff_pt].data) - _curr_amp_offset) * _curr_amp_per_volt;
+    // //current amps conversion
+    // _state.current_amps = (_data_to_volt(_analog_data[curr_buff_pt].data) - _curr_amp_offset) * _curr_amp_per_volt;
+    rec_bms();
 
-    // calculate time since last current read
     uint32_t tnow = AP_HAL::micros();
     uint32_t dt_us = tnow - _state.last_time_micros;
 
-    // update total current drawn since startup
-    update_consumed(_state, dt_us);
+    // 如果没有外部SOC，才考虑用电流积分
+    if (!_soc_valid)
+    {
+        update_consumed(_state, dt_us);
+    }
 
-    // record time
     _state.last_time_micros = tnow;
 }
 
@@ -233,4 +211,95 @@ float AP_BattMonitor_AD7091R5::_data_to_volt(uint32_t data)
     return (AD7091R5_REF/AD7091R5_RESOLUTION)*data;
 }
 
+bool AP_BattMonitor_AD7091R5::capacity_remaining_pct(uint8_t &percentage) const
+{
+    if (_soc_valid)
+    {
+        percentage = _soc_pct;
+        return true;
+    }
+
+    return AP_BattMonitor_Backend::capacity_remaining_pct(percentage);
+}
+
+void AP_BattMonitor_AD7091R5::rec_bms()
+{
+    auto *uart = hal.serial(5);
+    if (uart == nullptr)
+    {
+        return;
+    }
+
+    mavlink_status_t status{};
+    mavlink_message_t msg{};
+
+    while (uart->available() > 0)
+    {
+        const uint8_t byte = uart->read();
+
+        if (!mavlink_parse_char(MAVLINK_COMM_0, byte, &msg, &status))
+        {
+            continue;
+        }
+
+        if (msg.msgid != MAVLINK_MSG_ID_BATTERY_STATUS)
+        {
+            continue;
+        }
+
+        mavlink_battery_status_t pack{};
+        mavlink_msg_battery_status_decode(&msg, &pack);
+
+        // 先清空
+        memset(_state.cell_voltages.cells, 0, sizeof(_state.cell_voltages.cells));
+
+        // 你的协议是 4S，只取前4节
+        uint32_t total_mv = 0;
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            const uint16_t mv = pack.voltages[i];
+            _state.cell_voltages.cells[i] = mv;
+
+            if (mv > 0 && mv != UINT16_MAX)
+            {
+                total_mv += mv;
+            }
+        }
+
+        // 总压：mV -> V
+        _state.voltage = total_mv * 0.001f;
+
+        // 电流：cA -> A
+        if (pack.current_battery >= 0)
+        {
+            _state.current_amps = pack.current_battery * 0.01f;
+        }
+
+        // 温度：如果你分支里的 _state.temperature 就是 cdegC，可直接赋值
+        _state.temperature = pack.temperature;
+
+        // SOC：0~100有效，-1表示未知
+        if (pack.battery_remaining >= 0 && pack.battery_remaining <= 100)
+        {
+            _soc_pct = (uint8_t)pack.battery_remaining;
+            _soc_valid = true;
+        }
+        else
+        {
+            _soc_valid = false;
+        }
+
+        // 你协议里 current_consumed 被定义成 systemAlert，不要写到 consumed_mah
+        _system_alert = (uint32_t)pack.current_consumed;
+
+        _state.healthy = true;
+        _last_bms_ms = AP_HAL::millis();
+    }
+
+    // 超时判失联
+    if ((AP_HAL::millis() - _last_bms_ms) > 2000U)
+    {
+        _state.healthy = false;
+    }
+}
 #endif // AP_BATTERY_AD7091R5_ENABLED

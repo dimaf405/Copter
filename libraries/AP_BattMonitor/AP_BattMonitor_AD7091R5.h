@@ -44,12 +44,17 @@ public:
     }
 
     static const struct AP_Param::GroupInfo var_info[];
+    void rec_bms();
+    bool capacity_remaining_pct(uint8_t &percentage) const override;
 
 private:
     void _read_adc();
     bool _initialize();
     float _data_to_volt(uint32_t data);
-
+    bool _soc_valid = false;
+    uint8_t _soc_pct = 0;
+    uint32_t _system_alert = 0;
+    uint32_t _last_bms_ms = 0;
     static struct AnalogData {
         uint32_t data;
     } _analog_data[AD7091R5_NO_OF_CHANNELS];
