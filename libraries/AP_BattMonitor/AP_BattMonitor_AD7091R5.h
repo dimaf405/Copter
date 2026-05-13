@@ -57,6 +57,8 @@ private:
     uint8_t _soc_pct = 0;
     uint32_t _system_alert = 0;
     uint32_t _last_bms_ms = 0;
+    mavlink_message_t _bms_rxmsg {};
+    mavlink_status_t _bms_parser_status {};
     static struct AnalogData {
         uint32_t data;
     } _analog_data[AD7091R5_NO_OF_CHANNELS];

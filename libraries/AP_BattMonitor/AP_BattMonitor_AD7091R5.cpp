@@ -237,7 +237,21 @@ void AP_BattMonitor_AD7091R5::rec_bms()
     {
         const uint8_t byte = uart->read();
 
-        if (!mavlink_parse_char(MAVLINK_COMM_0, byte, &msg, &status))
+        const uint8_t framing = mavlink_frame_char_buffer(&_bms_rxmsg, &_bms_parser_status, byte, &msg, &status);
+        if (framing == MAVLINK_FRAMING_BAD_CRC || framing == MAVLINK_FRAMING_BAD_SIGNATURE)
+        {
+            _bms_parser_status.msg_received = MAVLINK_FRAMING_INCOMPLETE;
+            _bms_parser_status.parse_state = MAVLINK_PARSE_STATE_IDLE;
+            if (byte == MAVLINK_STX)
+            {
+                _bms_parser_status.parse_state = MAVLINK_PARSE_STATE_GOT_STX;
+                _bms_rxmsg.len = 0;
+                mavlink_start_checksum(&_bms_rxmsg);
+            }
+            continue;
+        }
+
+        if (framing != MAVLINK_FRAMING_OK)
         {
             continue;
         }
@@ -269,14 +283,17 @@ void AP_BattMonitor_AD7091R5::rec_bms()
         // 总压：mV -> V
         _state.voltage = total_mv * 0.001f;
 
-        // 电流：cA -> A
-        if (pack.current_battery >= 0)
+        // 电流：cA -> A，-1 表示未知
+        if (pack.current_battery != -1)
         {
             _state.current_amps = pack.current_battery * 0.01f;
         }
 
-        // 温度：如果你分支里的 _state.temperature 就是 cdegC，可直接赋值
-        _state.temperature = pack.temperature;
+        // 温度：BATTERY_STATUS.temperature 单位为 0.01°C，INT16_MAX 表示未知
+        if (pack.temperature != INT16_MAX)
+        {
+            _state.temperature = pack.temperature * 0.01f;
+        }
 
         // SOC：0~100有效，-1表示未知
         if (pack.battery_remaining >= 0 && pack.battery_remaining <= 100)
