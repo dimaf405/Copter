@@ -12,6 +12,53 @@
 
 #include <new>
 
+namespace {
+
+// lane切换前允许的最大姿态/位置差，避免切到已经发散的候选lane
+constexpr float EKF3_LANE_SWITCH_MAX_ROLL_PITCH_DIFF_RAD = radians(10.0f);
+constexpr float EKF3_LANE_SWITCH_MAX_YAW_DIFF_RAD = radians(20.0f);
+constexpr float EKF3_LANE_SWITCH_MAX_POS_NE_DIFF_M = 10.0f;
+constexpr float EKF3_LANE_SWITCH_MAX_POS_D_DIFF_M = 5.0f;
+
+// 只有当当前主lane与候选lane仍指向同一套物理解时，才允许执行切换
+bool ekf3_lane_switch_consistent(const NavEKF3_core &current_core, const NavEKF3_core &candidate_core)
+{
+    Vector3f current_eulers;
+    Vector3f candidate_eulers;
+    current_core.getEulerAngles(current_eulers);
+    candidate_core.getEulerAngles(candidate_eulers);
+
+    const float roll_diff = fabsF(wrap_PI(candidate_eulers.x - current_eulers.x));
+    const float pitch_diff = fabsF(wrap_PI(candidate_eulers.y - current_eulers.y));
+    if (MAX(roll_diff, pitch_diff) > EKF3_LANE_SWITCH_MAX_ROLL_PITCH_DIFF_RAD) {
+        return false;
+    }
+
+    const float yaw_diff = fabsF(wrap_PI(candidate_eulers.z - current_eulers.z));
+    if (yaw_diff > EKF3_LANE_SWITCH_MAX_YAW_DIFF_RAD) {
+        return false;
+    }
+
+    Vector2f current_pos_ne;
+    Vector2f candidate_pos_ne;
+    float current_pos_d;
+    float candidate_pos_d;
+    if (!current_core.getPosNE(current_pos_ne) || !candidate_core.getPosNE(candidate_pos_ne) ||
+        !current_core.getPosD_local(current_pos_d) || !candidate_core.getPosD_local(candidate_pos_d)) {
+        // 拿不到可比较的位置解时，保守地拒绝切换
+        return false;
+    }
+
+    const Vector2f pos_ne_diff = candidate_pos_ne - current_pos_ne;
+    if (sqrtf(sq(pos_ne_diff.x) + sq(pos_ne_diff.y)) > EKF3_LANE_SWITCH_MAX_POS_NE_DIFF_M) {
+        return false;
+    }
+
+    return fabsF(candidate_pos_d - current_pos_d) <= EKF3_LANE_SWITCH_MAX_POS_D_DIFF_M;
+}
+
+}
+
 /*
   parameter defaults for different types of vehicle. The
   APM_BUILD_DIRECTORY is taken from the main vehicle directory name
@@ -1039,6 +1086,10 @@ void NavEKF3::checkLaneSwitch(void)
             const NavEKF3_core &newCore = core[coreIndex];
             // an alternative core is available for selection only if healthy and if states have been updated on this time step
             bool altCoreAvailable = newCore.healthy() && newCore.have_aligned_yaw() && newCore.have_aligned_tilt();
+            if (altCoreAvailable) {
+                // 候选lane必须和当前主lane姿态/位置足够接近，才允许用于救场切换
+                altCoreAvailable = ekf3_lane_switch_consistent(core[primary], newCore);
+            }
             float altErrorScore = newCore.errorScore();
             if (altCoreAvailable && altErrorScore < lowestErrorScore && altErrorScore < 0.9) {
                 newPrimaryIndex = coreIndex;
