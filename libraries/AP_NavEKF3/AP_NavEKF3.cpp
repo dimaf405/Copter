@@ -14,11 +14,13 @@
 
 namespace {
 
-// lane切换前允许的最大姿态/位置差，避免切到已经发散的候选lane
-constexpr float EKF3_LANE_SWITCH_MAX_ROLL_PITCH_DIFF_RAD = radians(10.0f);
-constexpr float EKF3_LANE_SWITCH_MAX_YAW_DIFF_RAD = radians(20.0f);
-constexpr float EKF3_LANE_SWITCH_MAX_POS_NE_DIFF_M = 10.0f;
-constexpr float EKF3_LANE_SWITCH_MAX_POS_D_DIFF_M = 5.0f;
+// lane切换前允许的最大姿态/位置/速度差，避免切到已经发散的候选lane
+constexpr float EKF3_LANE_SWITCH_MAX_ROLL_PITCH_DIFF_RAD = radians(12.0f);
+constexpr float EKF3_LANE_SWITCH_MAX_YAW_DIFF_RAD = radians(15.0f);
+constexpr float EKF3_LANE_SWITCH_MAX_POS_NE_DIFF_M = 5.0f;
+constexpr float EKF3_LANE_SWITCH_MAX_POS_D_DIFF_M = 3.0f;
+constexpr float EKF3_LANE_SWITCH_MAX_VEL_NE_DIFF_MPS = 3.0f;
+constexpr float EKF3_LANE_SWITCH_MAX_VEL_D_DIFF_MPS = 2.0f;
 
 // 只有当当前主lane与候选lane仍指向同一套物理解时，才允许执行切换
 bool ekf3_lane_switch_consistent(const NavEKF3_core &current_core, const NavEKF3_core &candidate_core)
@@ -54,7 +56,22 @@ bool ekf3_lane_switch_consistent(const NavEKF3_core &current_core, const NavEKF3
         return false;
     }
 
-    return fabsF(candidate_pos_d - current_pos_d) <= EKF3_LANE_SWITCH_MAX_POS_D_DIFF_M;
+    if (fabsF(candidate_pos_d - current_pos_d) > EKF3_LANE_SWITCH_MAX_POS_D_DIFF_M) {
+        return false;
+    }
+
+    Vector3f current_vel_ned;
+    Vector3f candidate_vel_ned;
+    current_core.getVelNED(current_vel_ned);
+    candidate_core.getVelNED(candidate_vel_ned);
+
+    const Vector2f vel_ne_diff(candidate_vel_ned.x - current_vel_ned.x,
+                               candidate_vel_ned.y - current_vel_ned.y);
+    if (sqrtf(sq(vel_ne_diff.x) + sq(vel_ne_diff.y)) > EKF3_LANE_SWITCH_MAX_VEL_NE_DIFF_MPS) {
+        return false;
+    }
+
+    return fabsF(candidate_vel_ned.z - current_vel_ned.z) <= EKF3_LANE_SWITCH_MAX_VEL_D_DIFF_MPS;
 }
 
 }
