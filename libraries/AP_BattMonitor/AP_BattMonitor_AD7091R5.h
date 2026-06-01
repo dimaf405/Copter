@@ -10,6 +10,7 @@
 
 #include <AP_HAL/utility/OwnPtr.h>
 #include <AP_HAL/I2CDevice.h>
+#include <AP_HAL/UARTDriver.h>
 
 #define AD7091R5_NO_OF_CHANNELS  4
 #define AD7091R5_CONF_CMD        0x04
@@ -67,6 +68,7 @@ private:
 
     HAL_Semaphore sem; // semaphore for access to shared frontend data
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _dev;
+    AP_HAL::UARTDriver *_uart = nullptr;
     uint8_t volt_buff_pt;
     uint8_t curr_buff_pt;
 

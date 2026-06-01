@@ -22,6 +22,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
+#include <AP_SerialManager/AP_SerialManager.h>
 #include <GCS_MAVLink/GCS.h>
 //macro defines
 #define AD7091R5_I2C_ADDR        0x2F // A0 and A1 tied to GND
@@ -117,8 +118,12 @@ AP_BattMonitor_AD7091R5::AP_BattMonitor_AD7091R5(AP_BattMonitor &mon,
  */
 void AP_BattMonitor_AD7091R5::init()
 {
-    // voltage and current pins from params and check if there are in range
-
+    _uart = AP::serialmanager().find_serial(AP_SerialManager::SerialProtocol_BMS_MAVLink, 0);
+    if (_uart == nullptr)
+    {
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "AD7091R5: BMS port missing");
+        return;
+    }
 }
 
 /**
@@ -224,8 +229,7 @@ bool AP_BattMonitor_AD7091R5::capacity_remaining_pct(uint8_t &percentage) const
 
 void AP_BattMonitor_AD7091R5::rec_bms()
 {
-    auto *uart = hal.serial(5);
-    if (uart == nullptr)
+    if (_uart == nullptr)
     {
         return;
     }
@@ -233,9 +237,9 @@ void AP_BattMonitor_AD7091R5::rec_bms()
     mavlink_status_t status{};
     mavlink_message_t msg{};
 
-    while (uart->available() > 0)
+    while (_uart->available() > 0)
     {
-        const uint8_t byte = uart->read();
+        const uint8_t byte = _uart->read();
 
         const uint8_t framing = mavlink_frame_char_buffer(&_bms_rxmsg, &_bms_parser_status, byte, &msg, &status);
         if (framing == MAVLINK_FRAMING_BAD_CRC || framing == MAVLINK_FRAMING_BAD_SIGNATURE)

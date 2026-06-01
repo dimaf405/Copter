@@ -82,6 +82,8 @@ private:
     DEFINE_COLOUR_SEQUENCE(colour,colour,colour,colour,colour,colour,colour,colour,colour,colour)
 #define DEFINE_COLOUR_SEQUENCE_ALTERNATE(colour1, colour2)                      \
     DEFINE_COLOUR_SEQUENCE(colour1,colour2,colour1,colour2,colour1,colour2,colour1,colour2,colour1,colour2)
+#define DEFINE_COLOUR_SEQUENCE_FLASH(colour) \
+    DEFINE_COLOUR_SEQUENCE(colour,colour,colour,BLACK,BLACK,colour,colour,colour,BLACK,BLACK)
 
 #define BLACK  0
 #define BLUE   1
@@ -90,19 +92,20 @@ private:
 #define YELLOW (RED|GREEN)
 #define WHITE (RED|GREEN|BLUE)
 
-    const uint32_t sequence_initialising = DEFINE_COLOUR_SEQUENCE_ALTERNATE(RED,BLUE);
+    const uint32_t sequence_initialising = DEFINE_COLOUR_SEQUENCE_ALTERNATE(BLUE,GREEN);
     const uint32_t sequence_trim_or_esc = DEFINE_COLOUR_SEQUENCE(RED,BLUE,GREEN,RED,BLUE,GREEN,RED,BLUE,GREEN,BLACK);
     const uint32_t sequence_failsafe_leak = DEFINE_COLOUR_SEQUENCE_FAILSAFE(WHITE);
-    const uint32_t sequence_failsafe_ekf = DEFINE_COLOUR_SEQUENCE_FAILSAFE(RED);
-    const uint32_t sequence_failsafe_gps_glitching = DEFINE_COLOUR_SEQUENCE_FAILSAFE(BLUE);
-    const uint32_t sequence_failsafe_radio_or_battery = DEFINE_COLOUR_SEQUENCE_FAILSAFE(BLACK);
+    const uint32_t sequence_failsafe_ekf = DEFINE_COLOUR_SEQUENCE_ALTERNATE(RED,YELLOW);
+    const uint32_t sequence_failsafe_gps_glitching = DEFINE_COLOUR_SEQUENCE_ALTERNATE(YELLOW,BLUE);
+    const uint32_t sequence_failsafe_radio = DEFINE_COLOUR_SEQUENCE_FLASH(YELLOW);
+    const uint32_t sequence_failsafe_battery = DEFINE_COLOUR_SEQUENCE_SLOW(RED);
+    const uint32_t sequence_prearm_failing = DEFINE_COLOUR_SEQUENCE_SOLID(RED);
 
     const uint32_t sequence_armed = DEFINE_COLOUR_SEQUENCE_SOLID(GREEN);
     const uint32_t sequence_armed_no_gps_or_no_location = DEFINE_COLOUR_SEQUENCE_SOLID(BLUE);
-    const uint32_t sequence_prearm_failing = DEFINE_COLOUR_SEQUENCE(YELLOW,YELLOW,BLACK,BLACK,YELLOW,YELLOW,BLACK,BLACK,BLACK,BLACK);
-    const uint32_t sequence_disarmed_good_dgps_and_location = DEFINE_COLOUR_SEQUENCE_ALTERNATE(GREEN,BLACK);
-    const uint32_t sequence_disarmed_good_gps_and_location = DEFINE_COLOUR_SEQUENCE_SLOW(GREEN);
-    const uint32_t sequence_disarmed_bad_gps_or_no_location = DEFINE_COLOUR_SEQUENCE_SLOW(BLUE);
+    const uint32_t sequence_disarmed_good_dgps_and_location = DEFINE_COLOUR_SEQUENCE_FLASH(GREEN);
+    const uint32_t sequence_disarmed_good_gps_and_location = DEFINE_COLOUR_SEQUENCE_FLASH(GREEN);
+    const uint32_t sequence_disarmed_bad_gps_or_no_location = DEFINE_COLOUR_SEQUENCE_FLASH(BLUE);
 
     uint8_t last_step;
     enum class Source {
