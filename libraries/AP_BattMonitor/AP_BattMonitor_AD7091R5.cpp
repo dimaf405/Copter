@@ -293,10 +293,10 @@ void AP_BattMonitor_AD7091R5::rec_bms()
             _state.current_amps = pack.current_battery * 0.01f;
         }
 
-        // 温度：BATTERY_STATUS.temperature 单位为 0.01°C，INT16_MAX 表示未知
+        // 温度：BATTERY_STATUS.temperature 单位为 1°C，INT16_MAX 表示未知
         if (pack.temperature != INT16_MAX)
         {
-            _state.temperature = pack.temperature * 0.01f;
+            _state.temperature = pack.temperature;
         }
 
         // SOC：0~100有效，-1表示未知
