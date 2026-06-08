@@ -1029,6 +1029,10 @@ void NavEKF3::UpdateFilter(void)
                 // 3. not been the primary core for at least 10 seconds
                 altCoreAvailable = coreBetterScore(coreIndex, newPrimaryIndex) &&
                     imuSampleTime_us - coreLastTimePrimary_us[coreIndex] > 1E7;
+                if (altCoreAvailable) {
+                    // 候选lane必须和当前主lane姿态/位置/速度足够接近，才允许自动切换
+                    altCoreAvailable = ekf3_lane_switch_consistent(core[primary], core[coreIndex]);
+                }
 
                 if (altCoreAvailable) {
                     // if this core has a significantly lower relative error to the active primary, we consider it as a 
