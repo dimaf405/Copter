@@ -56,6 +56,7 @@ private:
     float _data_to_volt(uint32_t data);
     bool _soc_valid = false;
     uint8_t _soc_pct = 0;
+    bool _capacity_valid = false;  // BMS 提供了可使用容量，禁止电流积分覆盖
     uint32_t _system_alert = 0;
     uint32_t _last_bms_ms = 0;
     mavlink_message_t _bms_rxmsg {};
@@ -68,7 +69,8 @@ private:
 
     HAL_Semaphore sem; // semaphore for access to shared frontend data
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> _dev;
-    AP_HAL::UARTDriver *_uart = nullptr;
+    AP_HAL::UARTDriver *_uart = nullptr;   // UART5: BMS input
+    AP_HAL::UARTDriver *_uart6 = nullptr;  // UART6: 对频指令透传输出
     uint8_t volt_buff_pt;
     uint8_t curr_buff_pt;
 

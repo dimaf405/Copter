@@ -124,6 +124,13 @@ void AP_BattMonitor_AD7091R5::init()
         GCS_SEND_TEXT(MAV_SEVERITY_INFO, "AD7091R5: BMS port missing");
         return;
     }
+
+    // SERIAL6 用于透传对频指令
+    _uart6 = AP::serialmanager().get_serial_by_id(6);
+    if (_uart6 == nullptr)
+    {
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "AD7091R5: SERIAL6 missing, pairing fwd disabled");
+    }
 }
 
 /**
@@ -152,8 +159,8 @@ void AP_BattMonitor_AD7091R5::read()
     uint32_t tnow = AP_HAL::micros();
     uint32_t dt_us = tnow - _state.last_time_micros;
 
-    // 如果没有外部SOC，才考虑用电流积分
-    if (!_soc_valid)
+    // 如果没有外部SOC 且 没有外部可使用容量，才用电流积分
+    if (!_soc_valid && !_capacity_valid)
     {
         update_consumed(_state, dt_us);
     }
@@ -310,8 +317,29 @@ void AP_BattMonitor_AD7091R5::rec_bms()
             _soc_valid = false;
         }
 
-        // 你协议里 current_consumed 被定义成 systemAlert，不要写到 consumed_mah
+        // 协议里 current_consumed 被定义成 systemAlert，不要写到 consumed_mah
         _system_alert = (uint32_t)pack.current_consumed;
+
+        // 功能1：energy_consumed 在本协议中重定义为"可使用容量"（mAh）
+        // 标准MAVLink单位是hJ，但BMS在此字段填的是mAh，-1表示未知
+        if (pack.energy_consumed >= 0)
+        {
+            _state.consumed_mah = (float)pack.energy_consumed;
+            _capacity_valid = true;
+        }
+        else
+        {
+            _capacity_valid = false;
+        }
+
+        // 功能2：voltages_ext[0] == 401（十进制）时，将整帧原样从 UART6 转发
+        // 该帧为对频指令，飞控不处理，透传给外部设备
+        if (pack.voltages_ext[0] == 401 && _uart6 != nullptr)
+        {
+            uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+            const uint16_t len = mavlink_msg_to_send_buffer(buf, &msg);
+            _uart6->write(buf, len);
+        }
 
         _state.healthy = true;
         _last_bms_ms = AP_HAL::millis();
