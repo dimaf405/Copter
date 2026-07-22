@@ -189,7 +189,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @DisplayName: Land speed
     // @Description: The descent speed for the final stage of landing in cm/s
     // @Units: cm/s
-    // @Range: 30 200
+    // @Range: 10 200
     // @Increment: 10
     // @User: Standard
     GSCALAR(land_speed,             "LAND_SPEED",   LAND_SPEED),
