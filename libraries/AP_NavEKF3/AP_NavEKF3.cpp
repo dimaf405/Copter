@@ -1029,13 +1029,9 @@ void NavEKF3::UpdateFilter(void)
                 // 3. not been the primary core for at least 10 seconds
                 altCoreAvailable = coreBetterScore(coreIndex, newPrimaryIndex) &&
                     imuSampleTime_us - coreLastTimePrimary_us[coreIndex] > 1E7;
-                if (altCoreAvailable) {
-                    // 候选lane必须和当前主lane姿态/位置/速度足够接近，才允许自动切换
-                    altCoreAvailable = ekf3_lane_switch_consistent(core[primary], core[coreIndex]);
-                }
 
                 if (altCoreAvailable) {
-                    // if this core has a significantly lower relative error to the active primary, we consider it as a 
+                    // if this core has a significantly lower relative error to the active primary, we consider it as a
                     // better core and would like to switch to it even if the current primary is healthy
                     betterCore = altCoreError <= -BETTER_THRESH; // a better core if its relative error is below a substantial level than the primary's
                     // handle the case where the secondary core is faster to complete yaw alignment which can happen
@@ -1043,6 +1039,15 @@ void NavEKF3::UpdateFilter(void)
                     const NavEKF3_core &newCore = core[coreIndex];
                     const NavEKF3_core &oldCore = core[primary];
                     betterCore |= newCore.have_aligned_yaw() && !oldCore.have_aligned_yaw();
+
+                    // 一致性门禁只用于抑制“主lane仍然健康”时的择优切换抖动。
+                    // 当主lane已不健康或误差评分过高时，切换本身就是为了逃离已发散的解，
+                    // 此时健康候选lane必然与发散主lane差异很大——若仍要求二者一致，
+                    // 恰好会在最需要切换时把切换死锁住（航线转弯偏航发散→炸机的直接推手）。
+                    const bool primaryFailing = (primaryErrorScore > 1.0f) || !oldCore.healthy();
+                    if (betterCore && !primaryFailing && !ekf3_lane_switch_consistent(oldCore, newCore)) {
+                        betterCore = false;
+                    }
                     newPrimaryIndex = coreIndex;
                 }
             }
@@ -1106,11 +1111,11 @@ void NavEKF3::checkLaneSwitch(void)
         if (coreIndex != primary) {
             const NavEKF3_core &newCore = core[coreIndex];
             // an alternative core is available for selection only if healthy and if states have been updated on this time step
-            bool altCoreAvailable = newCore.healthy() && newCore.have_aligned_yaw() && newCore.have_aligned_tilt();
-            if (altCoreAvailable) {
-                // 候选lane必须和当前主lane姿态/位置足够接近，才允许用于救场切换
-                altCoreAvailable = ekf3_lane_switch_consistent(core[primary], newCore);
-            }
+            // 本函数是在飞控即将触发EKF失效保护时调用的“救场”路径，目的就是
+            // 逃离已经发散的主lane。此处绝不能再要求候选lane与发散主lane“姿态/位置一致”，
+            // 否则主lane越发散越切不出去，等于把最后的逃生通道锁死。只需候选lane自身健康、
+            // 已完成偏航/倾角对齐，且误差评分明显更低即可。
+            const bool altCoreAvailable = newCore.healthy() && newCore.have_aligned_yaw() && newCore.have_aligned_tilt();
             float altErrorScore = newCore.errorScore();
             if (altCoreAvailable && altErrorScore < lowestErrorScore && altErrorScore < 0.9) {
                 newPrimaryIndex = coreIndex;
