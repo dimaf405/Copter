@@ -57,6 +57,7 @@ private:
     void set_filter_and_scaling_icm42670(void);
     void set_filter_and_scaling_icm456xy(void);
     void fifo_reset();
+    void report_fifo_diagnostics();
     uint16_t calculate_fast_sampling_backend_rate(uint16_t base_backend_rate, uint16_t max_backend_rate) const;
 
     /* Read samples from FIFO */
@@ -146,4 +147,14 @@ private:
     float temp_filtered;
     LowPassFilter2pFloat temp_filter;
     uint32_t sampling_rate_hz;
+
+    // FIFO failures happen in the SPI bus thread, while update() runs in the
+    // main thread. Keep separate counters so a bus or frame failure is not
+    // hidden by the register-check path.
+    volatile uint32_t fifo_count_read_errors = 0;
+    volatile uint32_t fifo_data_read_errors = 0;
+    volatile uint32_t fifo_bad_frames = 0;
+    volatile uint32_t fifo_reset_count = 0;
+    volatile uint32_t last_fifo_success_us = 0;
+    uint32_t last_fifo_diag_report_ms = 0;
 };

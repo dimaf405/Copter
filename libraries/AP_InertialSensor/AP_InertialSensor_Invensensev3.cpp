@@ -31,6 +31,7 @@
  */
 
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Logger/AP_Logger.h>
 #include "AP_InertialSensor_Invensensev3.h"
 #include <utility>
 #include <stdio.h>
@@ -170,6 +171,10 @@ static_assert(sizeof(FIFOData) == 16, "FIFOData must be 16 bytes");
 static_assert(sizeof(FIFODataHighRes) == 20, "FIFODataHighRes must be 20 bytes");
 
 #define INV3_FIFO_BUFFER_LEN 8
+// A healthy callback never needs to drain more than a few records. Treat a
+// larger count as corrupt rather than allowing a damaged SPI transaction to
+// monopolise the SPI bus thread.
+#define INV3_MAX_FIFO_SAMPLES 32
 
 AP_InertialSensor_Invensensev3::AP_InertialSensor_Invensensev3(AP_InertialSensor &imu,
                                                                AP_HAL::OwnPtr<AP_HAL::Device> _dev,
@@ -389,7 +394,57 @@ bool AP_InertialSensor_Invensensev3::update()
     update_gyro(gyro_instance);
     _publish_temperature(accel_instance, temp_filtered);
 
+    report_fifo_diagnostics();
+
     return true;
+}
+
+void AP_InertialSensor_Invensensev3::report_fifo_diagnostics()
+{
+    const uint32_t errors = fifo_count_read_errors + fifo_data_read_errors +
+        fifo_bad_frames + fifo_reset_count;
+    if (errors == 0) {
+        return;
+    }
+
+    const uint32_t now_ms = AP_HAL::millis();
+    if (last_fifo_diag_report_ms != 0 &&
+        (now_ms - last_fifo_diag_report_ms) < 5000U) {
+        return;
+    }
+
+    last_fifo_diag_report_ms = now_ms;
+
+    const uint32_t last_ok_age_ms = last_fifo_success_us == 0 ? 0 :
+        (AP_HAL::micros() - last_fifo_success_us) / 1000U;
+
+#if HAL_LOGGING_ENABLED
+    AP::logger().WriteStreaming("ICMD", "TimeUS,I,CntErr,DataErr,Bad,Rst,LastOK",
+                                "QBIIIII", AP_HAL::micros64(), gyro_instance,
+                                fifo_count_read_errors, fifo_data_read_errors,
+                                fifo_bad_frames, fifo_reset_count, last_ok_age_ms);
+    AP::logger().Write_MessageF("IMU%u FIFO C:%lu D:%lu B:%lu R:%lu A:%lums",
+                                gyro_instance,
+                                static_cast<unsigned long>(fifo_count_read_errors),
+                                static_cast<unsigned long>(fifo_data_read_errors),
+                                static_cast<unsigned long>(fifo_bad_frames),
+                                static_cast<unsigned long>(fifo_reset_count),
+                                static_cast<unsigned long>(last_ok_age_ms));
+#endif
+
+#if HAL_GCS_ENABLED && BOARD_FLASH_SIZE > 1024
+    char name[sizeof("I0FDat")];
+    snprintf(name, sizeof(name), "I%uFCnt", MIN(gyro_instance, 9));
+    gcs().send_named_float(name, fifo_count_read_errors);
+    snprintf(name, sizeof(name), "I%uFDat", MIN(gyro_instance, 9));
+    gcs().send_named_float(name, fifo_data_read_errors);
+    snprintf(name, sizeof(name), "I%uFBad", MIN(gyro_instance, 9));
+    gcs().send_named_float(name, fifo_bad_frames);
+    snprintf(name, sizeof(name), "I%uFRst", MIN(gyro_instance, 9));
+    gcs().send_named_float(name, fifo_reset_count);
+    snprintf(name, sizeof(name), "I%uFAge", MIN(gyro_instance, 9));
+    gcs().send_named_float(name, last_ok_age_ms);
+#endif
 }
 
 /*
@@ -536,11 +591,26 @@ void AP_InertialSensor_Invensensev3::read_fifo()
     const uint8_t fifo_sample_size = INV3_SAMPLE_SIZE;
 #endif
     if (!block_read(reg_counth, (uint8_t*)&n_samples, 2)) {
+        fifo_count_read_errors++;
+        _inc_gyro_error_count(gyro_instance);
+        _inc_accel_error_count(accel_instance);
         goto check_registers;
     }
 
     if (n_samples == 0) {
         /* Not enough data in FIFO */
+        goto check_registers;
+    }
+
+    if (n_samples > INV3_MAX_FIFO_SAMPLES) {
+        // A corrupt count can otherwise result in an unbounded sequence of
+        // FIFO reads in the SPI bus thread.
+        fifo_bad_frames++;
+        _inc_gyro_error_count(gyro_instance);
+        _inc_accel_error_count(accel_instance);
+        n_samples = 0;
+        fifo_reset_count++;
+        fifo_reset();
         goto check_registers;
     }
 
@@ -551,17 +621,26 @@ void AP_InertialSensor_Invensensev3::read_fifo()
     while (n_samples > 0) {
         uint8_t n = MIN(n_samples, INV3_FIFO_BUFFER_LEN);
         if (!block_read(reg_data, (uint8_t*)fifo_buffer, n * fifo_sample_size)) {
+            fifo_data_read_errors++;
+            _inc_gyro_error_count(gyro_instance);
+            _inc_accel_error_count(accel_instance);
             goto check_registers;
         }
 #if HAL_INS_HIGHRES_SAMPLE
         if (highres_sampling) {
             if (!accumulate_highres_samples((FIFODataHighRes*)fifo_buffer, n)) {
+                fifo_bad_frames++;
+                _inc_gyro_error_count(gyro_instance);
+                _inc_accel_error_count(accel_instance);
                 need_reset = true;
                 break;
             }
         } else
 #endif
         if (!accumulate_samples((FIFOData*)fifo_buffer, n)) {
+            fifo_bad_frames++;
+            _inc_gyro_error_count(gyro_instance);
+            _inc_accel_error_count(accel_instance);
             need_reset = true;
             break;
         }
@@ -569,7 +648,12 @@ void AP_InertialSensor_Invensensev3::read_fifo()
     }
 
     if (need_reset) {
+        fifo_reset_count++;
         fifo_reset();
+    }
+
+    if (!need_reset) {
+        last_fifo_success_us = AP_HAL::micros();
     }
     
 check_registers:
