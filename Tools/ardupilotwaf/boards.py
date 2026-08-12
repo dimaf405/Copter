@@ -1255,6 +1255,7 @@ class chibios(Board):
 
         env.GIT_SUBMODULES += [
             'ChibiOS',
+            'CrashDebug',
         ]
 
         env.INCLUDES += [
