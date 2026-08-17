@@ -297,13 +297,20 @@ void Scheduler::reboot(bool hold_in_bootloader)
 #endif
 
 #if HAL_LOGGING_ENABLED
-    //stop logging
+    bool logger_stopped = true;
+    // 重启前等待日志IO线程将缓冲区全部刷入SD卡，最多等待5秒
     if (AP_Logger::get_singleton()) {
-        AP::logger().StopLogging();
+        EXPECT_DELAY_MS(6000);
+        logger_stopped = AP::logger().StopLoggingFlush(5000);
+        if (!logger_stopped) {
+            DEV_PRINTF("Logger flush timed out during reboot\n");
+        }
     }
 
-    // unmount filesystem, if active
-    AP::FS().unmount();
+    // 若日志IO回调未能安全停止，则跳过卸载以防破坏文件系统
+    if (logger_stopped) {
+        AP::FS().unmount();
+    }
 #endif
 
 #if AP_FASTBOOT_ENABLED

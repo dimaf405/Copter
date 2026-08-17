@@ -223,6 +223,20 @@ void AP_Logger::init(const AP_Int32 &log_bitmask, const struct LogStructure *str
     _num_types = num_types;
     _structures = structures;
 
+    // 计算已请求但未编译进固件的后端掩码，启动后通过GCS发出警告
+    uint8_t compiled_backend_mask = 0;
+#if HAL_LOGGING_FILESYSTEM_ENABLED
+    compiled_backend_mask |= uint8_t(Backend_Type::FILESYSTEM);
+#endif
+#if HAL_LOGGING_DATAFLASH_ENABLED
+    compiled_backend_mask |= uint8_t(Backend_Type::BLOCK);
+#endif
+#if HAL_LOGGING_MAVLINK_ENABLED
+    compiled_backend_mask |= uint8_t(Backend_Type::MAVLINK);
+#endif
+    const uint8_t requested_backend_mask = uint8_t(_params.backend_types);
+    unavailable_backend_mask = requested_backend_mask & ~compiled_backend_mask;
+
     // the "main" logging type needs to come before mavlink so that
     // index 0 is correct
     static const struct {
@@ -795,6 +809,32 @@ void AP_Logger::StopLogging()
     FOR_EACH_BACKEND(stop_logging());
 }
 
+// 异步停止所有后端并等待缓冲区刷盘，超时返回false；重启前调用以防日志丢失
+bool AP_Logger::StopLoggingFlush(uint32_t timeout_ms)
+{
+    EnableWrites(false);
+    FOR_EACH_BACKEND(stop_logging_async());
+
+    const uint32_t start_ms = AP_HAL::millis();
+    while (true) {
+        bool pending = false;
+        for (uint8_t i = 0; i < _next_backend; i++) {
+            pending |= backends[i]->stop_logging_pending();
+        }
+        if (!pending) {
+            bool success = true;
+            for (uint8_t i = 0; i < _next_backend; i++) {
+                success &= backends[i]->stop_logging_succeeded();
+            }
+            return success;
+        }
+        if (AP_HAL::millis() - start_ms >= timeout_ms) {
+            return false;
+        }
+        hal.scheduler->delay_microseconds(1000);
+    }
+}
+
 uint16_t AP_Logger::find_last_log() const {
     if (_next_backend == 0) {
         return 0;
@@ -866,6 +906,16 @@ void AP_Logger::periodic_tasks() {
 #ifndef HAL_BUILD_AP_PERIPH
     handle_log_send();
 #endif
+    if (unavailable_backend_mask != 0 && unavailable_backend_warning_count < 3) {
+        const uint32_t now = AP_HAL::millis();
+        if (now > 3000U && now - unavailable_backend_last_warning_ms >= 5000U) {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
+                          "Logger backend unavailable: mask %u",
+                          unsigned(unavailable_backend_mask));
+            unavailable_backend_last_warning_ms = now;
+            unavailable_backend_warning_count++;
+        }
+    }
     FOR_EACH_BACKEND(periodic_tasks());
 }
 

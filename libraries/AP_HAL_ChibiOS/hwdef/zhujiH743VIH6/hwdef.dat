@@ -149,6 +149,10 @@ define HAL_HAVE_SAFETY_SWITCH 0
 # Enable FAT filesystem support for the SPI SD NAND.
 define HAL_OS_FATFS_IO 1
 
+# Reads should fail promptly, while writes need extra time for internal FTL/GC.
+define MMC_READ_TIMEOUT_MS 1000
+define MMC_WRITE_TIMEOUT_MS 3000
+
 
 # LED setup for PixracerLED driver
 #PE3 LED_BLUE OUTPUT LOW GPIO(0)

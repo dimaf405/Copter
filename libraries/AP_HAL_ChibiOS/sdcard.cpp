@@ -21,6 +21,9 @@
 #include "hwdef/common/spi_hook.h"
 #include <AP_BoardConfig/AP_BoardConfig.h>
 #include <AP_Filesystem/AP_Filesystem.h>
+#ifndef HAL_BOOTLOADER_BUILD
+#include <GCS_MAVLink/GCS.h>
+#endif
 #include "bouncebuffer.h"
 #include "stm32_util.h"
 
@@ -31,7 +34,9 @@ static FATFS SDC_FS; // FATFS object
 #ifndef HAL_BOOTLOADER_BUILD
 static HAL_Semaphore sem;
 #endif
-static bool sdcard_running;
+static bool block_device_running;   // 物理块设备（SDC/SPI）已初始化
+static bool filesystem_mounted;     // FAT文件系统已成功挂载
+static FRESULT last_mount_result = FR_NOT_READY;  // 最近一次挂载结果，用于GCS故障上报
 #endif
 
 #if HAL_USE_SDC
@@ -45,6 +50,57 @@ static AP_HAL::OwnPtr<AP_HAL::SPIDevice> device;
 static MMCConfig mmcconfig;
 static SPIConfig lowspeed;
 static SPIConfig highspeed;
+static mmc_connect_error_t last_connect_error = MMC_CONNECT_ERROR_NONE;
+static uint8_t last_connect_error_r1 = 0xFFU;
+#endif
+
+#if defined(USE_POSIX)
+static const char *fatfs_result_name(FRESULT result)
+{
+    switch (result) {
+    case FR_OK:                  return "OK";
+    case FR_DISK_ERR:            return "DISK_ERR";
+    case FR_INT_ERR:             return "INT_ERR";
+    case FR_NOT_READY:           return "NOT_READY";
+    case FR_NO_FILE:             return "NO_FILE";
+    case FR_NO_PATH:             return "NO_PATH";
+    case FR_INVALID_NAME:        return "INVALID_NAME";
+    case FR_DENIED:              return "DENIED";
+    case FR_EXIST:               return "EXIST";
+    case FR_INVALID_OBJECT:      return "INVALID_OBJECT";
+    case FR_WRITE_PROTECTED:     return "WRITE_PROTECTED";
+    case FR_INVALID_DRIVE:       return "INVALID_DRIVE";
+    case FR_NOT_ENABLED:         return "NOT_ENABLED";
+    case FR_NO_FILESYSTEM:       return "NO_FILESYSTEM";
+    case FR_MKFS_ABORTED:        return "MKFS_ABORTED";
+    case FR_TIMEOUT:             return "TIMEOUT";
+    case FR_LOCKED:              return "LOCKED";
+    case FR_NOT_ENOUGH_CORE:     return "NOT_ENOUGH_CORE";
+    case FR_TOO_MANY_OPEN_FILES: return "TOO_MANY_OPEN_FILES";
+    case FR_INVALID_PARAMETER:   return "INVALID_PARAMETER";
+    default:                     return "UNKNOWN";
+    }
+}
+#endif
+
+#if HAL_USE_MMC_SPI
+static const char *mmc_connect_error_name(mmc_connect_error_t error)
+{
+    switch (error) {
+    case MMC_CONNECT_ERROR_NONE:      return "none";
+    case MMC_CONNECT_ERROR_CMD0:      return "CMD0";
+    case MMC_CONNECT_ERROR_CMD8:      return "CMD8";
+    case MMC_CONNECT_ERROR_CMD8_ECHO: return "CMD8_R7";
+    case MMC_CONNECT_ERROR_ACMD41:    return "ACMD41";
+    case MMC_CONNECT_ERROR_CMD1:      return "CMD1";
+    case MMC_CONNECT_ERROR_CMD58:     return "CMD58";
+    case MMC_CONNECT_ERROR_CMD16:     return "CMD16";
+    case MMC_CONNECT_ERROR_CSD:       return "CSD";
+    case MMC_CONNECT_ERROR_CAPACITY: return "capacity";
+    case MMC_CONNECT_ERROR_CID:       return "CID";
+    default:                          return "unknown";
+    }
+}
 #endif
 
 /*
@@ -52,7 +108,7 @@ static SPIConfig highspeed;
   AP_BoardConfig initialisation. The parameter BRD_SD_SLOWDOWN
   controls a scaling factor on the microSD clock
  */
-bool sdcard_init()
+static bool sdcard_init_internal(bool mount_filesystem)
 {
 #ifdef USE_POSIX
 #ifndef HAL_BOOTLOADER_BUILD
@@ -80,9 +136,11 @@ bool sdcard_init()
 #endif
     }
 
-    if (sdcard_running) {
+    if (block_device_running) {
         sdcard_stop();
     }
+    filesystem_mounted = false;
+    last_mount_result = FR_NOT_READY;
 
     const uint8_t tries = 3;
     for (uint8_t i=0; i<tries; i++) {
@@ -92,32 +150,51 @@ bool sdcard_init()
             sdcStop(&sdcd);
             continue;
         }
-        if (f_mount(&SDC_FS, "/", 1) != FR_OK) {
+        block_device_running = true;
+        if (!mount_filesystem) {
+            printf("SDCard: block device initialized (filesystem not mounted)\n");
+            return true;
+        }
+        const FRESULT mount_result = f_mount(&SDC_FS, "/", 1);
+        last_mount_result = mount_result;
+        if (mount_result != FR_OK) {
+            printf("SDCard: mount failed (FRESULT=%u %s)\n",
+                   (unsigned)mount_result, fatfs_result_name(mount_result));
             sdcDisconnect(&sdcd);
             sdcStop(&sdcd);
+            block_device_running = false;
             continue;
         }
         printf("Successfully mounted SDCard (slowdown=%u)\n", (unsigned)sd_slowdown);
 
-        sdcard_running = true;
+        filesystem_mounted = true;
+        last_mount_result = FR_OK;
         return true;
     }
 #elif HAL_USE_MMC_SPI
     if (MMCD1.buffer == nullptr) {
         // allocate 16 byte non-cacheable buffer for microSD
         MMCD1.buffer = (uint8_t*)malloc_axi_sram(MMC_BUFFER_SIZE);
+        if (MMCD1.buffer == nullptr) {
+            printf("SDCard: unable to allocate MMC DMA buffer\n");
+            return false;
+        }
     }
 
-    if (sdcard_running) {
+    if (block_device_running) {
         sdcard_stop();
     }
 
-    sdcard_running = true;
+    block_device_running = true;
+    filesystem_mounted = false;
+    last_mount_result = FR_NOT_READY;
+    last_connect_error = MMC_CONNECT_ERROR_NONE;
+    last_connect_error_r1 = 0xFFU;
 
     device = AP_HAL::get_HAL().spi->get_device("sdcard");
     if (!device) {
         printf("No sdcard SPI device found\n");
-        sdcard_running = false;
+        block_device_running = false;
         return false;
     }
     device->set_slowdown(sd_slowdown);
@@ -137,21 +214,60 @@ bool sdcard_init()
         mmcStart(&MMCD1, &mmcconfig);
 
         if (mmcConnect(&MMCD1) == HAL_FAILED) {
+            last_connect_error = MMCD1.connect_error;
+            last_connect_error_r1 = MMCD1.connect_error_r1;
+            last_mount_result = FR_NOT_READY;
             mmcStop(&MMCD1);
             continue;
         }
-        if (f_mount(&SDC_FS, "/", 1) != FR_OK) {
+        last_connect_error = MMC_CONNECT_ERROR_NONE;
+        last_connect_error_r1 = 0x00U;
+        BlockDeviceInfo info;
+        if (mmcGetInfo(&MMCD1, &info) == HAL_SUCCESS) {
+            printf("SDCard: connected, blocks=%lu block_size=%lu\n",
+                   (unsigned long)info.blk_num,
+                   (unsigned long)info.blk_size);
+        }
+        if (!mount_filesystem) {
+            printf("SDCard: block device initialized (filesystem not mounted)\n");
+            return true;
+        }
+        last_mount_result = f_mount(&SDC_FS, "/", 1);
+        if (last_mount_result != FR_OK) {
             mmcDisconnect(&MMCD1);
             mmcStop(&MMCD1);
             continue;
         }
         printf("Successfully mounted SDCard (slowdown=%u)\n", (unsigned)sd_slowdown);
+        filesystem_mounted = true;
+        last_mount_result = FR_OK;
         return true;
     }
+    if (last_connect_error != MMC_CONNECT_ERROR_NONE) {
+        printf("SDCard: MMC connect failed at %s (R1=0x%02x)\n",
+               mmc_connect_error_name(last_connect_error),
+               (unsigned)last_connect_error_r1);
+    } else if (last_mount_result != FR_NOT_READY) {
+        printf("SDCard: mount failed (FRESULT=%u %s)\n",
+               (unsigned)last_mount_result,
+               fatfs_result_name(last_mount_result));
+    }
 #endif
-    sdcard_running = false;
+    block_device_running = false;
+    filesystem_mounted = false;
 #endif  // USE_POSIX
     return false;
+}
+
+bool sdcard_init()
+{
+    return sdcard_init_internal(true);
+}
+
+bool sdcard_prepare_for_format()
+{
+    // 仅初始化块设备，不挂载文件系统；用于对出厂未分区的SD NAND执行格式化
+    return sdcard_init_internal(false);
 }
 
 /*
@@ -162,6 +278,7 @@ void sdcard_stop(void)
 #ifdef USE_POSIX
     // unmount
     f_mount(nullptr, "/", 1);
+    filesystem_mounted = false;
 #endif
 #if HAL_USE_SDC
 #if STM32_SDC_USE_SDMMC2 == TRUE
@@ -169,16 +286,16 @@ void sdcard_stop(void)
 #else
     auto &sdcd = SDCD1;
 #endif
-    if (sdcard_running) {
+    if (block_device_running) {
         sdcDisconnect(&sdcd);
         sdcStop(&sdcd);
-        sdcard_running = false;
+        block_device_running = false;
     }
 #elif HAL_USE_MMC_SPI
-    if (sdcard_running) {
+    if (block_device_running) {
         mmcDisconnect(&MMCD1);
         mmcStop(&MMCD1);
-        sdcard_running = false;
+        block_device_running = false;
     }
 #endif
 }
@@ -186,7 +303,7 @@ void sdcard_stop(void)
 bool sdcard_retry(void)
 {
 #ifdef USE_POSIX
-    if (!sdcard_running) {
+    if (!filesystem_mounted) {
         if (sdcard_init()) {
 #if AP_FILESYSTEM_FILE_WRITING_ENABLED
             // create APM directory
@@ -194,7 +311,32 @@ bool sdcard_retry(void)
 #endif
         }
     }
-    return sdcard_running;
+#ifndef HAL_BOOTLOADER_BUILD
+    static uint32_t last_failure_report_ms;
+    if (!filesystem_mounted && hal.scheduler->is_system_initialized()) {
+        const uint32_t now = AP_HAL::millis();
+        if (last_failure_report_ms == 0 || now - last_failure_report_ms >= 30000U) {
+            last_failure_report_ms = now;
+#if HAL_USE_MMC_SPI
+            if (last_connect_error != MMC_CONNECT_ERROR_NONE) {
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
+                              "SDCard init: %s R1=0x%02x",
+                              mmc_connect_error_name(last_connect_error),
+                              (unsigned)last_connect_error_r1);
+            } else
+#endif
+            {
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
+                              "SDCard mount: %s (%u)",
+                              fatfs_result_name(last_mount_result),
+                              (unsigned)last_mount_result);
+            }
+        }
+    } else {
+        last_failure_report_ms = 0;
+    }
+#endif
+    return filesystem_mounted;
 #endif
     return false;
 }
@@ -219,7 +361,7 @@ void spiStopHook(SPIDriver *spip)
 
 __RAMFUNC__ void spiAcquireBusHook(SPIDriver *spip)
 {
-    if (sdcard_running) {
+    if (block_device_running) {
         ChibiOS::SPIDevice *devptr = static_cast<ChibiOS::SPIDevice*>(device.get());
         devptr->acquire_bus(true, true);
     }
@@ -227,7 +369,7 @@ __RAMFUNC__ void spiAcquireBusHook(SPIDriver *spip)
 
 __RAMFUNC__ void spiReleaseBusHook(SPIDriver *spip)
 {
-    if (sdcard_running) {
+    if (block_device_running) {
         ChibiOS::SPIDevice *devptr = static_cast<ChibiOS::SPIDevice*>(device.get());
         devptr->acquire_bus(false, true);
     }
@@ -235,7 +377,7 @@ __RAMFUNC__ void spiReleaseBusHook(SPIDriver *spip)
 
 __RAMFUNC__ void spiSelectHook(SPIDriver *spip)
 {
-    if (sdcard_running) {
+    if (block_device_running) {
         device->get_semaphore()->take_blocking();
         device->set_chip_select(true);
     }
@@ -243,31 +385,40 @@ __RAMFUNC__ void spiSelectHook(SPIDriver *spip)
 
 __RAMFUNC__ void spiUnselectHook(SPIDriver *spip)
 {
-    if (sdcard_running) {
+    if (block_device_running) {
         device->set_chip_select(false);
         device->get_semaphore()->give();
     }
 }
 
-void spiIgnoreHook(SPIDriver *spip, size_t n)
+bool spiIgnoreHook(SPIDriver *spip, size_t n)
 {
-    if (sdcard_running) {
-        device->clock_pulse(n);
+    if (!block_device_running) {
+        return false;
     }
+    return device->clock_pulse(n);
 }
 
-__RAMFUNC__ void spiSendHook(SPIDriver *spip, size_t n, const void *txbuf)
+__RAMFUNC__ bool spiSendHook(SPIDriver *spip, size_t n, const void *txbuf)
 {
-    if (sdcard_running) {
-        device->transfer((const uint8_t *)txbuf, n, nullptr, 0);
+    if (!block_device_running) {
+        return false;
     }
+    return device->transfer((const uint8_t *)txbuf, n, nullptr, 0);
 }
 
-__RAMFUNC__ void spiReceiveHook(SPIDriver *spip, size_t n, void *rxbuf)
+__RAMFUNC__ bool spiReceiveHook(SPIDriver *spip, size_t n, void *rxbuf)
 {
-    if (sdcard_running) {
-        device->transfer(nullptr, 0, (uint8_t *)rxbuf, n);
+    if (!block_device_running) {
+        memset(rxbuf, 0, n);
+        return false;
     }
+    if (!device->transfer(nullptr, 0, (uint8_t *)rxbuf, n)) {
+        // Never leave stale 0xFF data that could be mistaken for card idle.
+        memset(rxbuf, 0, n);
+        return false;
+    }
+    return true;
 }
 
 #endif

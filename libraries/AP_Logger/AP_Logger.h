@@ -245,6 +245,7 @@ public:
     bool WritesEnabled() const { return _writes_enabled; }
 
     void StopLogging();
+    bool StopLoggingFlush(uint32_t timeout_ms);
 
     void Write_Parameter(const char *name, float value);
     void Write_Event(LogEvent id);
@@ -436,6 +437,9 @@ private:
     #define LOGGER_MAX_BACKENDS 2
     uint8_t _next_backend;
     AP_Logger_Backend *backends[LOGGER_MAX_BACKENDS];
+    uint8_t unavailable_backend_mask = 0;
+    uint8_t unavailable_backend_warning_count = 0;
+    uint32_t unavailable_backend_last_warning_ms = 0;
     const AP_Int32 *_log_bitmask;
 
     enum class Backend_Type : uint8_t {

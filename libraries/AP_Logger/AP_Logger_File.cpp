@@ -105,6 +105,7 @@ void AP_Logger_File::Init()
         if (filename != nullptr) {
             AP::FS().unlink(filename);
             free(filename);
+            invalidate_log_directory_state();
         }
     }
 
@@ -116,9 +117,9 @@ bool AP_Logger_File::file_exists(const char *filename) const
     struct stat st;
     EXPECT_DELAY_MS(3000);
     if (AP::FS().stat(filename, &st) == -1) {
-        // hopefully errno==ENOENT.  If some error occurs it is
-        // probably better to assume this file exists.
-        return false;
+        // Only ENOENT proves the slot is free.  On an I/O error, treating it
+        // as occupied avoids truncating a surviving log after a power fault.
+        return errno != ENOENT;
     }
     return true;
 }
@@ -139,6 +140,7 @@ void AP_Logger_File::periodic_1Hz()
     AP_Logger_Backend::periodic_1Hz();
 
     if (_initialised &&
+        !stop_logging_requested &&
         _write_fd == -1 && _read_fd == -1 &&
         erase.log_num == 0 &&
         erase.was_logging) {
@@ -149,6 +151,7 @@ void AP_Logger_File::periodic_1Hz()
     }
     
     if (_initialised &&
+        !stop_logging_requested &&
         !start_new_log_pending &&
         _write_fd == -1 && _read_fd == -1 &&
         logging_enabled() &&
@@ -224,7 +227,7 @@ int64_t AP_Logger_File::disk_space()
  */
 bool AP_Logger_File::dirent_to_log_num(const dirent *de, uint16_t &log_num) const
 {
-    uint8_t length = strlen(de->d_name);
+    const size_t length = strlen(de->d_name);
     if (length < 5) {
         return false;
     }
@@ -233,11 +236,169 @@ bool AP_Logger_File::dirent_to_log_num(const dirent *de, uint16_t &log_num) cons
         return false;
     }
 
-    uint16_t thisnum = strtoul(de->d_name, nullptr, 10);
-    if (thisnum > _front.get_max_num_logs()) {
+    for (size_t i = 0; i < length - 4; i++) {
+        if (de->d_name[i] < '0' || de->d_name[i] > '9') {
+            return false;
+        }
+    }
+
+    const unsigned long thisnum = strtoul(de->d_name, nullptr, 10);
+    if (thisnum == 0 || thisnum > _front.get_max_num_logs()) {
         return false;
     }
-    log_num = thisnum;
+    log_num = uint16_t(thisnum);
+    return true;
+}
+
+bool AP_Logger_File::read_lastlog_marker(uint16_t &log_num, bool &marked_discard) const
+{
+    log_num = 0;
+    marked_discard = false;
+
+    char *fname = _lastlog_file_name();
+    if (fname == nullptr) {
+        return false;
+    }
+    EXPECT_DELAY_MS(3000);
+    FileData *fd = AP::FS().load_file(fname);
+    free(fname);
+    if (fd == nullptr || fd->length == 0) {
+        delete fd;
+        return false;
+    }
+
+    char *endptr = nullptr;
+    const unsigned long parsed = strtoul((const char *)fd->data, &endptr, 10);
+    if (endptr == (const char *)fd->data ||
+        parsed == 0 || parsed > _front.get_max_num_logs()) {
+        delete fd;
+        return false;
+    }
+
+    marked_discard = *endptr == 'D';
+    if (marked_discard) {
+        endptr++;
+    }
+    const bool valid = *endptr == '\0' || *endptr == '\r' || *endptr == '\n';
+    if (valid) {
+        log_num = uint16_t(parsed);
+    }
+    delete fd;
+    return valid;
+}
+
+/*
+  Scan the actual BIN files once and derive their chronological order.  The
+  marker anchors wrapped numbering, but directory contents remain the source
+  of truth after an abrupt power cut.
+ */
+bool AP_Logger_File::scan_log_directory(uint16_t marker_log_num,
+                                        bool marker_valid,
+                                        LogDirectoryState &state) const
+{
+    state.count = 0;
+    state.newest = 0;
+    state.oldest = 0;
+    state.marker_found = false;
+    state.present.clearall();
+
+    const uint16_t max_logs = _front.get_max_num_logs();
+
+    EXPECT_DELAY_MS(3000);
+    auto *d = AP::FS().opendir(_log_directory);
+    if (d == nullptr) {
+        return false;
+    }
+
+    errno = 0;
+    while (struct dirent *de = AP::FS().readdir(d)) {
+        uint16_t log_num;
+        if (!dirent_to_log_num(de, log_num)) {
+            continue;
+        }
+        if (!state.present.get(log_num - 1U)) {
+            state.present.set(log_num - 1U);
+            state.count++;
+        }
+    }
+    const int scan_errno = errno;
+    const bool close_ok = AP::FS().closedir(d) == 0;
+    if (scan_errno != 0 || !close_ok) {
+        state.count = 0;
+        state.present.clearall();
+        return false;
+    }
+
+    if (state.count == 0) {
+        return true;
+    }
+
+    if (marker_valid && state.present.get(marker_log_num - 1U)) {
+        state.marker_found = true;
+        state.newest = marker_log_num;
+
+        // LASTLOG.TXT can lag behind one or more BIN directory entries.  Move
+        // forward through the contiguous run that follows the marker.
+        if (state.count < max_logs) {
+            while (true) {
+                uint16_t next = state.newest + 1U;
+                if (next > max_logs) {
+                    next = 1;
+                }
+                if (next == marker_log_num || !state.present.get(next - 1U)) {
+                    break;
+                }
+                state.newest = next;
+            }
+        }
+    } else {
+        uint16_t recovered = 0;
+        uint16_t run_end_count = 0;
+        for (uint16_t log_num = 1; log_num <= max_logs; log_num++) {
+            uint16_t next = log_num + 1U;
+            if (next > max_logs) {
+                next = 1;
+            }
+            if (state.present.get(log_num - 1U) && !state.present.get(next - 1U)) {
+                recovered = log_num;
+                run_end_count++;
+            }
+        }
+        if (run_end_count == 1) {
+            state.newest = recovered;
+        } else {
+            // Multiple gaps without a marker are ambiguous.  Prefer the
+            // highest filename; subsequent starts will rebuild a clear anchor.
+            for (uint16_t log_num = max_logs; log_num > 0; log_num--) {
+                if (state.present.get(log_num - 1U)) {
+                    state.newest = log_num;
+                    break;
+                }
+            }
+        }
+    }
+
+    uint16_t candidate = state.newest;
+    for (uint16_t i = 0; i < max_logs; i++) {
+        candidate = candidate == max_logs ? 1 : candidate + 1U;
+        if (state.present.get(candidate - 1U)) {
+            state.oldest = candidate;
+            break;
+        }
+    }
+    return state.oldest != 0;
+}
+
+bool AP_Logger_File::refresh_log_directory_state() const
+{
+    uint16_t marker_log_num;
+    bool marker_discard;
+    const bool marker_valid = read_lastlog_marker(marker_log_num, marker_discard);
+    if (!scan_log_directory(marker_log_num, marker_valid, log_directory_state)) {
+        log_directory_state_valid = false;
+        return false;
+    }
+    log_directory_state_valid = true;
     return true;
 }
 
@@ -246,58 +407,14 @@ bool AP_Logger_File::dirent_to_log_num(const dirent *de, uint16_t &log_num) cons
 // returns 0 if no log was found
 uint16_t AP_Logger_File::find_oldest_log()
 {
-    if (_cached_oldest_log != 0) {
-        return _cached_oldest_log;
-    }
-
-    uint16_t last_log_num = find_last_log();
-    if (last_log_num == 0) {
+    uint16_t marker_log_num;
+    bool marker_discard;
+    const bool marker_valid = read_lastlog_marker(marker_log_num, marker_discard);
+    LogDirectoryState state;
+    if (!scan_log_directory(marker_log_num, marker_valid, state)) {
         return 0;
     }
-
-    uint16_t current_oldest_log = 0; // 0 is invalid
-
-    // We could count up to find_last_log(), but if people start
-    // relying on the min_avail_space_percent feature we could end up
-    // doing a *lot* of asprintf()s and stat()s
-    EXPECT_DELAY_MS(3000);
-    auto *d = AP::FS().opendir(_log_directory);
-    if (d == nullptr) {
-        // SD card may have died?  On linux someone may have rm-rf-d
-        return 0;
-    }
-
-    // we only remove files which look like xxx.BIN
-    EXPECT_DELAY_MS(3000);
-    for (struct dirent *de=AP::FS().readdir(d); de; de=AP::FS().readdir(d)) {
-        EXPECT_DELAY_MS(3000);
-        uint16_t thisnum;
-        if (!dirent_to_log_num(de, thisnum)) {
-            // not a log filename
-            continue;
-        }
-        if (current_oldest_log == 0) {
-            current_oldest_log = thisnum;
-        } else {
-            if (current_oldest_log <= last_log_num) {
-                if (thisnum > last_log_num) {
-                    current_oldest_log = thisnum;
-                } else if (thisnum < current_oldest_log) {
-                    current_oldest_log = thisnum;
-                }
-            } else { // current_oldest_log > last_log_num
-                if (thisnum > last_log_num) {
-                    if (thisnum < current_oldest_log) {
-                        current_oldest_log = thisnum;
-                    }
-                }
-            }
-        }
-    }
-    AP::FS().closedir(d);
-    _cached_oldest_log = current_oldest_log;
-
-    return current_oldest_log;
+    return state.oldest;
 }
 
 void AP_Logger_File::Prep_MinSpace()
@@ -311,23 +428,50 @@ void AP_Logger_File::Prep_MinSpace()
         return;
     }
 
-    const uint16_t first_log_to_remove = find_oldest_log();
+    uint16_t marker_log_num;
+    bool marker_discard;
+    const bool marker_valid = read_lastlog_marker(marker_log_num, marker_discard);
+    LogDirectoryState state;
+    if (!scan_log_directory(marker_log_num, marker_valid, state) || state.count == 0) {
+        // Never delete files based on a partial or failed directory scan.
+        return;
+    }
+
+    const uint16_t last_log_to_keep = state.newest;
+    const uint16_t first_log_to_remove = state.oldest;
     if (first_log_to_remove == 0) {
         // no files to remove
         return;
     }
 
-    const int64_t target_free = (int64_t)_front._params.min_MB_free * MB_to_B;
+    int64_t target_free = (int64_t)_front._params.min_MB_free * MB_to_B;
+    const int64_t total_space = disk_space();
+    if (total_space > int64_t(_free_space_min_avail) &&
+        target_free > total_space - _free_space_min_avail) {
+        // A saved parameter from a larger card can be impossible to satisfy
+        // after changing to a smaller device.  Limit it at runtime so startup
+        // does not erase every log while chasing unattainable free space.
+        const int64_t fallback_target = MAX(int64_t(10) * MB_to_B,
+                                            total_space / 10);
+        target_free = MIN(target_free, fallback_target);
+        GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
+                      "LOG_FILE_MB_FREE too high, using %uMB",
+                      unsigned(target_free / MB_to_B));
+    }
 
     uint16_t log_to_remove = first_log_to_remove;
 
     uint16_t count = 0;
     do {
-        int64_t avail = disk_space_avail();
-        if (avail == -1) {
+        const int64_t avail = disk_space_avail();
+        if (avail < 0) {
             break;
         }
         if (avail >= target_free) {
+            break;
+        }
+        if (log_to_remove == last_log_to_keep) {
+            // Space settings must never remove the newest surviving log.
             break;
         }
         if (count++ > _front.get_max_num_logs() + 10) {
@@ -357,11 +501,22 @@ void AP_Logger_File::Prep_MinSpace()
                 }
             } else {
                 free(filename_to_remove);
+                state.present.clear(log_to_remove - 1U);
             }
         }
-        log_to_remove++;
-        if (log_to_remove > _front.get_max_num_logs()) {
-            log_to_remove = 1;
+        bool found_next = false;
+        for (uint16_t i = 0; i < _front.get_max_num_logs(); i++) {
+            log_to_remove++;
+            if (log_to_remove > _front.get_max_num_logs()) {
+                log_to_remove = 1;
+            }
+            if (state.present.get(log_to_remove - 1U)) {
+                found_next = true;
+                break;
+            }
+        }
+        if (!found_next) {
+            break;
         }
     } while (log_to_remove != first_log_to_remove);
 }
@@ -489,24 +644,40 @@ bool AP_Logger_File::_WritePrioritisedBlock(const void *pBuffer, uint16_t size, 
  */
 uint16_t AP_Logger_File::find_last_log()
 {
-    unsigned ret = 0;
-    char *fname = _lastlog_file_name();
-    if (fname == nullptr) {
-        return ret;
+    uint16_t marker_log_num;
+    bool marker_discard;
+    const bool marker_valid = read_lastlog_marker(marker_log_num, marker_discard);
+    LogDirectoryState state;
+    if (!scan_log_directory(marker_log_num, marker_valid, state)) {
+        last_log_is_marked_discard = false;
+        return 0;
     }
-    EXPECT_DELAY_MS(3000);
-    FileData *fd = AP::FS().load_file(fname);
-    free(fname);
-    last_log_is_marked_discard = false;
-    if (fd != nullptr) {
-        char *endptr = nullptr;
-        ret = strtol((const char *)fd->data, &endptr, 10);
-        if (endptr != nullptr) {
-            last_log_is_marked_discard = *endptr == 'D';
+    last_log_is_marked_discard = marker_valid && state.marker_found &&
+                                 state.newest == marker_log_num && marker_discard;
+    return state.newest;
+}
+
+uint16_t AP_Logger_File::log_num_from_list_entry(const uint16_t list_entry) const
+{
+    if (list_entry == 0) {
+        return 0;
+    }
+
+    if ((!log_directory_state_valid && !refresh_log_directory_state()) ||
+        list_entry > log_directory_state.count) {
+        return 0;
+    }
+
+    const uint16_t max_logs = _front.get_max_num_logs();
+    uint16_t candidate = log_directory_state.oldest;
+    uint16_t entry = 0;
+    for (uint16_t i = 0; i < max_logs; i++) {
+        if (log_directory_state.present.get(candidate - 1U) && ++entry == list_entry) {
+            return candidate;
         }
-        delete fd;
+        candidate = candidate == max_logs ? 1 : candidate + 1U;
     }
-    return ret;
+    return 0;
 }
 
 uint32_t AP_Logger_File::_get_log_size(const uint16_t log_num)
@@ -608,7 +779,16 @@ int16_t AP_Logger_File::get_log_data(const uint16_t list_entry, const uint16_t p
         if (fname == nullptr) {
             return -1;
         }
-        stop_logging();
+        stop_logging_async();
+        const uint32_t stop_start_ms = AP_HAL::millis();
+        while (stop_logging_requested &&
+               AP_HAL::millis() - stop_start_ms < 3000U) {
+            hal.scheduler->delay_microseconds(1000);
+        }
+        if (stop_logging_requested || !stop_logging_success || logging_started()) {
+            free(fname);
+            return -1;
+        }
         EXPECT_DELAY_MS(3000);
         _read_fd = AP::FS().open(fname, O_RDONLY);
         if (_read_fd == -1) {
@@ -668,39 +848,13 @@ void AP_Logger_File::get_log_info(const uint16_t list_entry, uint32_t &size, uin
 }
 
 
-/*
-  get the number of logs - note that the log numbers must be consecutive
- */
+// get the number of actual BIN files; numbering may contain power-loss gaps
 uint16_t AP_Logger_File::get_num_logs()
 {
-    auto *d = AP::FS().opendir(_log_directory);
-    if (d == nullptr) {
+    if (!refresh_log_directory_state()) {
         return 0;
     }
-    uint16_t high = find_last_log();
-    uint16_t ret = high;
-    uint16_t smallest_above_last = 0;
-
-    EXPECT_DELAY_MS(2000);
-    for (struct dirent *de=AP::FS().readdir(d); de; de=AP::FS().readdir(d)) {
-        EXPECT_DELAY_MS(100);
-        uint16_t thisnum;
-        if (!dirent_to_log_num(de, thisnum)) {
-            // not a log filename
-            continue;
-        }
-
-        if (thisnum > high && (smallest_above_last == 0 || thisnum < smallest_above_last)) {
-            smallest_above_last = thisnum;
-        }
-    }
-    AP::FS().closedir(d);
-    if (smallest_above_last != 0) {
-        // we have wrapped, add in the logs with high numbers
-        ret += (_front.get_max_num_logs() - smallest_above_last) + 1;
-    }
-
-    return ret;
+    return log_directory_state.count;
 }
 
 /*
@@ -708,16 +862,65 @@ uint16_t AP_Logger_File::get_num_logs()
  */
 void AP_Logger_File::stop_logging(void)
 {
-    // best-case effort to avoid annoying the IO thread
-    const bool have_sem = write_fd_semaphore.take(hal.util->get_soft_armed()?1:20);
+    if (!_initialised) {
+        start_new_log_pending = false;
+        stop_logging_requested = false;
+        stop_logging_success = _writebuf.available() == 0;
+        return;
+    }
+    if (!write_fd_semaphore.take(hal.util->get_soft_armed() ? 1 : 20)) {
+        start_new_log_pending = false;
+        stop_logging_requested = true;
+        return;
+    }
+    stop_logging_requested = false;
+    stop_logging_success = true;
+    start_new_log_pending = false;
     if (_write_fd != -1) {
-        int fd = _write_fd;
+        const int fd = _write_fd;
+        const bool synced = AP::FS().fsync(fd) == 0;
+        const bool closed = AP::FS().close(fd) == 0;
         _write_fd = -1;
-        AP::FS().close(fd);
+        if (!synced || !closed) {
+            _last_write_failed = true;
+            stop_logging_success = false;
+        }
     }
-    if (have_sem) {
-        write_fd_semaphore.give();
+    write_fd_semaphore.give();
+}
+
+/*
+  异步请求停止日志记录，由IO线程在缓冲区清空后负责关闭文件；
+  相比同步stop_logging()，不会阻塞主线程等待文件关闭完成
+ */
+void AP_Logger_File::stop_logging_async(void)
+{
+    start_new_log_pending = false;
+    stop_logging_success = true;
+    stop_logging_requested = true;
+}
+
+bool AP_Logger_File::close_write_file()
+{
+    if (!write_fd_semaphore.take_nonblocking()) {
+        return false;
     }
+
+    bool success = true;
+    if (_write_fd != -1) {
+        const int fd = _write_fd;
+        const bool synced = AP::FS().fsync(fd) == 0;
+        const bool closed = AP::FS().close(fd) == 0;
+        if (!synced || !closed) {
+            _last_write_failed = true;
+            success = false;
+        }
+        _write_fd = -1;
+    }
+    write_fd_semaphore.give();
+    stop_logging_success = success;
+    stop_logging_requested = false;
+    return success;
 }
 
 /*
@@ -787,7 +990,8 @@ void AP_Logger_File::start_new_log(void)
         _read_fd = -1;
     }
 
-    if (disk_space_avail() < _free_space_min_avail && disk_space() > 0) {
+    const int64_t space_avail = disk_space_avail();
+    if (space_avail >= 0 && space_avail < _free_space_min_avail && disk_space() > 0) {
         DEV_PRINTF("Out of space for logging\n");
         return;
     }
@@ -799,6 +1003,28 @@ void AP_Logger_File::start_new_log(void)
     }
     if (log_num > _front.get_max_num_logs()) {
         log_num = 1;
+    }
+
+    // A power cut can leave the BIN directory entry newer than LASTLOG.TXT.
+    // Do not truncate such a recovered log unless every log slot is occupied.
+    const uint16_t first_candidate = log_num;
+    bool free_slot_found;
+    while (!(free_slot_found = !log_exists(log_num))) {
+        log_num++;
+        if (log_num > _front.get_max_num_logs()) {
+            log_num = 1;
+        }
+        if (log_num == first_candidate) {
+            break;
+        }
+    }
+    if (!free_slot_found) {
+        // All slots are occupied, so overwrite the oldest actual log.
+        const uint16_t oldest_log = find_oldest_log();
+        if (oldest_log == 0) {
+            return;
+        }
+        log_num = oldest_log;
     }
     if (!write_fd_semaphore.take(1)) {
         return;
@@ -827,6 +1053,7 @@ void AP_Logger_File::start_new_log(void)
     EXPECT_DELAY_MS(3000);
     _write_fd = AP::FS().open(_write_filename, O_WRONLY|O_CREAT|O_TRUNC);
     _cached_oldest_log = 0;
+    invalidate_log_directory_state();
 
     if (_write_fd == -1) {
         write_fd_semaphore.give();
@@ -837,6 +1064,17 @@ void AP_Logger_File::start_new_log(void)
             DEV_PRINTF("Log open fail for %s - %s\n",
                                 _write_filename, strerror(saved_errno));
         }
+        return;
+    }
+
+    // Persist the new directory entry before LASTLOG.TXT references it.  If
+    // power fails between these operations, startup recovery can still find
+    // the BIN file without ever pointing at a missing one.
+    if (AP::FS().fsync(_write_fd) != 0) {
+        AP::FS().close(_write_fd);
+        _write_fd = -1;
+        _last_write_failed = true;
+        write_fd_semaphore.give();
         return;
     }
     _last_write_ms = AP_HAL::millis();
@@ -861,7 +1099,7 @@ bool AP_Logger_File::write_lastlog_file(uint16_t log_num)
     char *fname = _lastlog_file_name();
 
     EXPECT_DELAY_MS(3000);
-    int fd = AP::FS().open(fname, O_WRONLY|O_CREAT);
+    int fd = AP::FS().open(fname, O_WRONLY|O_CREAT|O_TRUNC);
     free(fname);
     if (fd == -1) {
         return false;
@@ -871,8 +1109,9 @@ bool AP_Logger_File::write_lastlog_file(uint16_t log_num)
     snprintf(buf, sizeof(buf), "%u%s\r\n", (unsigned)log_num, last_log_is_marked_discard?"D":"");
     const ssize_t to_write = strlen(buf);
     const ssize_t written = AP::FS().write(fd, buf, to_write);
-    AP::FS().close(fd);
-    return written == to_write;
+    const bool synced = written == to_write && AP::FS().fsync(fd) == 0;
+    const bool closed = AP::FS().close(fd) == 0;
+    return synced && closed;
 }
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL || CONFIG_HAL_BOARD == HAL_BOARD_LINUX
@@ -909,7 +1148,7 @@ void AP_Logger_File::io_timer(void)
     uint32_t tnow = AP_HAL::millis();
     _io_timer_heartbeat = tnow;
 
-    if (start_new_log_pending) {
+    if (start_new_log_pending && !stop_logging_requested) {
         start_new_log();
         start_new_log_pending = false;
     }
@@ -920,7 +1159,15 @@ void AP_Logger_File::io_timer(void)
         return;
     }
 
-    if (_write_fd == -1 || !_initialised || recent_open_error()) {
+    if (_write_fd == -1 || !_initialised) {
+        if (stop_logging_requested) {
+            stop_logging_success = _write_fd == -1 && _writebuf.available() == 0;
+            stop_logging_requested = false;
+        }
+        return;
+    }
+
+    if (recent_open_error() && !stop_logging_requested) {
         return;
     }
 
@@ -933,10 +1180,14 @@ void AP_Logger_File::io_timer(void)
 
     uint32_t nbytes = _writebuf.available();
     if (nbytes == 0) {
+        if (stop_logging_requested) {
+            close_write_file();
+        }
         return;
     }
     if (nbytes < _writebuf_chunk && 
-        tnow - _last_write_time < 2000UL) {
+        tnow - _last_write_time < 2000UL &&
+        !stop_logging_requested) {
         // write in _writebuf_chunk-sized chunks, but always write at
         // least once per 2 seconds if data is available
         return;
@@ -944,7 +1195,8 @@ void AP_Logger_File::io_timer(void)
     if (tnow - _free_space_last_check_time > _free_space_check_interval) {
         _free_space_last_check_time = tnow;
         last_io_operation = "disk_space_avail";
-        if (disk_space_avail() < _free_space_min_avail && disk_space() > 0) {
+        const int64_t space_avail = disk_space_avail();
+        if (space_avail >= 0 && space_avail < _free_space_min_avail && disk_space() > 0) {
             DEV_PRINTF("Out of space for logging\n");
             stop_logging();
             _open_error_ms = AP_HAL::millis(); // prevent logging starting again for 5s
@@ -992,10 +1244,13 @@ void AP_Logger_File::io_timer(void)
             last_io_operation = "";
             _write_fd = -1;
             printf("Failed to write to File: %s\n", strerror(errno));
+            if (stop_logging_requested) {
+                stop_logging_success = false;
+                stop_logging_requested = false;
+            }
         }
         _last_write_failed = true;
     } else {
-        _last_write_failed = false;
         _last_write_ms = tnow;
         _write_offset += nwritten;
         _writebuf.advance(nwritten);
@@ -1007,9 +1262,15 @@ void AP_Logger_File::io_timer(void)
          */
 #if CONFIG_HAL_BOARD != HAL_BOARD_SITL && CONFIG_HAL_BOARD_SUBTYPE != HAL_BOARD_SUBTYPE_LINUX_NONE
         last_io_operation = "fsync";
-        AP::FS().fsync(_write_fd);
+        if (AP::FS().fsync(_write_fd) != 0) {
+            _last_write_failed = true;
+            last_io_operation = "";
+            write_fd_semaphore.give();
+            return;
+        }
         last_io_operation = "";
 #endif
+        _last_write_failed = false;
 
 #if AP_RTC_ENABLED && CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
         // ChibiOS does not update mtime on writes, so if we opened
@@ -1097,9 +1358,9 @@ void AP_Logger_File::erase_next(void)
     }
 
     _cached_oldest_log = 0;
+    invalidate_log_directory_state();
 
     erase.log_num = 0;
 }
 
 #endif // HAL_LOGGING_FILESYSTEM_ENABLED
-

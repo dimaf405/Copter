@@ -42,10 +42,13 @@ static HAL_Semaphore sem;
 typedef struct {
     FIL *fh;
     char *name;
+    FSIZE_t recover_offset;  // 重挂载后用于恢复文件指针位置
+    uint8_t recover_flags;   // 重挂载后用于重新打开文件的访问标志（FA_READ/FA_WRITE）
 } FAT_FILE;
 
 #define MAX_FILES 16
 static FAT_FILE *file_table[MAX_FILES];
+static uint16_t open_directory_count;  // 当前打开的目录句柄计数，格式化前检查文件系统是否空闲
 
 static bool isatty_(int fileno)
 {
@@ -257,29 +260,47 @@ static bool remount_file_system(void)
         EXPECT_DELAY_MS(0);
         return false;
     }
-    remount_needed = false;
+    bool all_reopened = true;
     for (uint16_t i=0; i<MAX_FILES; i++) {
         FAT_FILE *f = file_table[i];
         if (!f) {
             continue;
         }
         FIL *fh = f->fh;
-        FSIZE_t offset = fh->fptr;
-        uint8_t flags = fh->flag & (FA_READ | FA_WRITE);
+        uint8_t flags = f->recover_flags;
+        FSIZE_t offset = f->recover_offset;
+        if (fh->obj.fs != nullptr && fh->err == 0) {
+            flags = fh->flag & (FA_READ | FA_WRITE);
+            offset = fh->fptr;
+        } else if (flags == 0) {
+            // open() allocates the descriptor before its first f_open().
+            continue;
+        }
 
-        memset(fh, 0, sizeof(*fh));
         if (flags & FA_WRITE) {
             // the file may not have been created yet on the sdcard
             flags |= FA_OPEN_ALWAYS;
         }
-        FRESULT res = f_open(fh, f->name, flags);
+        FIL reopened {};
+        FRESULT res = f_open(&reopened, f->name, flags);
         debug("reopen %s flags=0x%x ofs=%u -> %d\n", f->name, unsigned(flags), unsigned(offset), int(res));
         if (res == FR_OK) {
-            f_lseek(fh, offset);
+            res = f_lseek(&reopened, offset);
         }
+        if (res != FR_OK || reopened.fptr != offset) {
+            if (reopened.obj.fs != nullptr) {
+                f_close(&reopened);
+            }
+            all_reopened = false;
+            continue;
+        }
+        *fh = reopened;
+        f->recover_flags = flags & (FA_READ | FA_WRITE);
+        f->recover_offset = offset;
     }
+    remount_needed = !all_reopened;
     EXPECT_DELAY_MS(0);
-    return true;
+    return all_reopened;
 }
 
 int AP_Filesystem_FATFS::open(const char *pathname, int flags, bool allow_absolute_path)
@@ -331,9 +352,14 @@ int AP_Filesystem_FATFS::open(const char *pathname, int flags, bool allow_absolu
         return -1;
     }
     res = f_open(fh, pathname, (BYTE) (fatfs_modes & 0xff));
+    if (res == FR_OK) {
+        stream->recover_flags = fh->flag & (FA_READ | FA_WRITE);
+        stream->recover_offset = fh->fptr;
+    }
     if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
         // one retry on disk error
         hal.scheduler->delay(100);
+        remount_needed = true;
         if (remount_file_system()) {
             res = f_open(fh, pathname, (BYTE) (fatfs_modes & 0xff));
         }
@@ -343,6 +369,8 @@ int AP_Filesystem_FATFS::open(const char *pathname, int flags, bool allow_absolu
         free_file_descriptor(fileno);
         return -1;
     }
+    stream->recover_flags = fh->flag & (FA_READ | FA_WRITE);
+    stream->recover_offset = fh->fptr;
     if (flags & O_APPEND) {
         ///  Seek to end of the file
         res = f_lseek(fh, f_size(fh));
@@ -352,6 +380,7 @@ int AP_Filesystem_FATFS::open(const char *pathname, int flags, bool allow_absolu
             free_file_descriptor(fileno);
             return -1;
         }
+        stream->recover_offset = fh->fptr;
     }
 
     debug("Open %s -> %d", pathname, fileno);
@@ -422,6 +451,13 @@ int32_t AP_Filesystem_FATFS::read(int fd, void *buf, uint32_t count)
             n = MIN(bytes, MAX_IO_SIZE);
         }
         res = f_read(fh, (void *)buf, n, &size);
+        if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
+            hal.scheduler->delay(100);
+            remount_needed = true;
+            if (remount_file_system()) {
+                res = f_read(fh, (void *)buf, n, &size);
+            }
+        }
         if (res != FR_OK) {
             errno = fatfs_to_errno((FRESULT)res);
             return -1;
@@ -434,6 +470,10 @@ int32_t AP_Filesystem_FATFS::read(int fd, void *buf, uint32_t count)
             return -1;
         }
         total += size;
+        FAT_FILE *stream = fileno_to_stream(fd);
+        if (stream != nullptr) {
+            stream->recover_offset = fh->fptr;
+        }
         buf = (void *)(((uint8_t *)buf)+size);
         bytes -= size;
         if (size < n) {
@@ -473,6 +513,7 @@ int32_t AP_Filesystem_FATFS::write(int fd, const void *buf, uint32_t count)
         if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
             // one retry on disk error
             hal.scheduler->delay(100);
+            remount_needed = true;
             if (remount_file_system()) {
                 res = f_write(fh, buf, n, &size);
             }
@@ -486,6 +527,10 @@ int32_t AP_Filesystem_FATFS::write(int fd, const void *buf, uint32_t count)
             return -1;
         }
         total += size;
+        FAT_FILE *stream = fileno_to_stream(fd);
+        if (stream != nullptr) {
+            stream->recover_offset = fh->fptr;
+        }
         buf = (void *)(((uint8_t *)buf)+size);
         bytes -= size;
         if (size < n) {
@@ -504,6 +549,8 @@ int AP_Filesystem_FATFS::fsync(int fileno)
     FS_CHECK_ALLOWED(-1);
     WITH_SEMAPHORE(sem);
 
+    CHECK_REMOUNT();
+
     errno = 0;
 
     // checks if fileno out of bounds
@@ -518,6 +565,17 @@ int AP_Filesystem_FATFS::fsync(int fileno)
         return -1;
     }
     res = f_sync(fh);
+    if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
+        hal.scheduler->delay(100);
+        if (stream != nullptr) {
+            stream->recover_offset = fh->fptr;
+        }
+        remount_needed = true;
+        if (remount_file_system()) {
+            fh = fileno_to_fatfs(fileno);
+            res = fh == nullptr ? FR_INVALID_OBJECT : f_sync(fh);
+        }
+    }
     if (res != FR_OK) {
         errno = fatfs_to_errno((FRESULT)res);
         return -1;
@@ -533,6 +591,8 @@ off_t AP_Filesystem_FATFS::lseek(int fileno, off_t position, int whence)
 
     FS_CHECK_ALLOWED(-1);
     WITH_SEMAPHORE(sem);
+
+    CHECK_REMOUNT();
 
     // fileno_to_fatfs checks for fd out of bounds
     fh = fileno_to_fatfs(fileno);
@@ -551,9 +611,19 @@ off_t AP_Filesystem_FATFS::lseek(int fileno, off_t position, int whence)
     }
 
     res = f_lseek(fh, position);
+    if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
+        remount_needed = true;
+        if (remount_file_system()) {
+            res = f_lseek(fh, position);
+        }
+    }
     if (res) {
         errno = fatfs_to_errno(res);
         return -1;
+    }
+    FAT_FILE *stream = fileno_to_stream(fileno);
+    if (stream != nullptr) {
+        stream->recover_offset = fh->fptr;
     }
     return fh->fptr;
 }
@@ -604,6 +674,7 @@ int AP_Filesystem_FATFS::stat(const char *name, struct stat *buf)
     res = f_stat(name, &info);
     if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
         // one retry on disk error
+        remount_needed = true;
         if (remount_file_system()) {
             res = f_stat(name, &info);
         }
@@ -696,6 +767,7 @@ int AP_Filesystem_FATFS::rename(const char *oldpath, const char *newpath)
 struct DIR_Wrapper {
     DIR d; // must be first structure element
     struct dirent de;
+    char *path;
 };
 
 void *AP_Filesystem_FATFS::opendir(const char *pathdir)
@@ -710,18 +782,27 @@ void *AP_Filesystem_FATFS::opendir(const char *pathdir)
     if (!ret) {
         return nullptr;
     }
+    ret->path = strdup(pathdir);
+    if (ret->path == nullptr) {
+        delete ret;
+        errno = ENOMEM;
+        return nullptr;
+    }
     int res = f_opendir(&ret->d, pathdir);
     if (res == FR_DISK_ERR && RETRY_ALLOWED()) {
         // one retry on disk error
+        remount_needed = true;
         if (remount_file_system()) {
             res = f_opendir(&ret->d, pathdir);
         }
     }
     if (res != FR_OK) {
         errno = fatfs_to_errno((FRESULT)res);
+        free(ret->path);
         delete ret;
         return nullptr;
     }
+    open_directory_count++;
     debug("Opendir %s -> %p", pathdir, ret);
     return &ret->d;
 }
@@ -770,7 +851,11 @@ int AP_Filesystem_FATFS::closedir(void *dirp_void)
         return -1;
     }
     int res = f_closedir (dirp);
+    free(d->path);
     delete d;
+    if (open_directory_count > 0) {
+        open_directory_count--;
+    }
     if (res != FR_OK) {
         errno = fatfs_to_errno((FRESULT)res);
         return -1;
@@ -793,7 +878,7 @@ int64_t AP_Filesystem_FATFS::disk_free(const char *path)
     /* Get volume information and free clusters of drive 1 */
     FRESULT res = f_getfree("/", &fre_clust, &fs);
     if (res) {
-        return res;
+        return -1;
     }
 
     /* Get total sectors and free sectors */
@@ -867,8 +952,12 @@ bool AP_Filesystem_FATFS::retry_mount(void)
 {
     FS_CHECK_ALLOWED(false);
     WITH_SEMAPHORE(sem);
+    if (remount_needed) {
+        return remount_file_system();
+    }
     return sdcard_retry();
 }
+
 
 /*
   unmount filesystem for reboot
@@ -908,22 +997,57 @@ void AP_Filesystem_FATFS::format_handler(void)
     WITH_SEMAPHORE(sem);
     format_status = FormatStatus::IN_PROGRESS;
     GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Formatting SDCard");
+
+    // Formatting invalidates every FatFs object associated with this volume.
+    // Reject the operation while a logger, download or other user still has
+    // a file open so success never leaves stale descriptors behind.
+    for (const auto *file : file_table) {
+        if (file != nullptr) {
+            format_status = FormatStatus::FAILURE;
+            GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Format: filesystem busy");
+            return;
+        }
+    }
+    if (open_directory_count != 0) {
+        format_status = FormatStatus::FAILURE;
+        GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Format: filesystem busy");
+        return;
+    }
+
+    // A soldered SD NAND may be shipped without a FAT volume.  In that
+    // case sdcard_init() cannot mount it, so connect the block device only
+    // before invoking f_mkfs().
+    sdcard_stop();
+    if (!sdcard_prepare_for_format()) {
+        format_status = FormatStatus::FAILURE;
+        GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Format: SDCard unavailable");
+        sdcard_retry();
+        return;
+    }
+
     uint8_t *buf = (uint8_t *)hal.util->malloc_type(FF_MAX_SS, AP_HAL::Util::MEM_DMA_SAFE);
     if (buf == nullptr) {
+        format_status = FormatStatus::FAILURE;
+        GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Format: buffer allocation failed");
+        sdcard_stop();
+        sdcard_retry();
         return;
     }
     // format first disk
     auto ret = f_mkfs("0:", 0, buf, FF_MAX_SS);
     hal.util->free_type(buf, FF_MAX_SS, AP_HAL::Util::MEM_DMA_SAFE);
-    if (ret == FR_OK) {
+    sdcard_stop();
+    const bool remounted = sdcard_retry();
+    if (ret != FR_OK) {
+        format_status = FormatStatus::FAILURE;
+        GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Format: Failed (%d)", int(ret));
+    } else if (!remounted) {
+        format_status = FormatStatus::FAILURE;
+        GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Format: remount failed");
+    } else {
         format_status = FormatStatus::SUCCESS;
         GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Format: OK");
-    } else {
-        format_status = FormatStatus::FAILURE;
-        GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Format: Failed (%d)", int(ret));
     }
-    sdcard_stop();
-    sdcard_retry();
 #endif
 }
 

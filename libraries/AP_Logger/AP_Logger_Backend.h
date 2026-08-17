@@ -99,6 +99,10 @@ public:
     virtual void stop_logging(void) = 0;
     // asynchronously stop logging, status can be determined through logging_started()
     virtual void stop_logging_async(void) { stop_logging(); }
+    // true while an asynchronous stop still has buffered data to persist
+    virtual bool stop_logging_pending(void) const { return false; }
+    // false when the most recent asynchronous stop could not persist data
+    virtual bool stop_logging_succeeded(void) const { return true; }
 
     void Fill_Format(const struct LogStructure *structure, struct log_Format &pkt);
     void Fill_Format_Units(const struct LogStructure *s, struct log_Format_Units &pkt);
@@ -210,7 +214,7 @@ protected:
     LoggerMessageWriter_DFLogStart *_startup_messagewriter;
     bool _writing_startup_messages;
 
-    uint16_t _cached_oldest_log;
+    uint16_t _cached_oldest_log = 0;
 
     uint32_t _dropped;
     // should we rotate when we next stop logging

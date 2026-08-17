@@ -18,5 +18,8 @@
 #include <stdbool.h>
 
 bool sdcard_init();
+// Initialise the physical card without mounting a filesystem. This is used
+// by the explicit storage-format command for cards shipped without FAT.
+bool sdcard_prepare_for_format();
 void sdcard_stop();
 bool sdcard_retry();

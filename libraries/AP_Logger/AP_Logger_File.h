@@ -8,6 +8,7 @@
 
 #include <AP_Filesystem/AP_Filesystem.h>
 
+#include <AP_Common/Bitmask.h>
 #include <AP_HAL/utility/RingBuffer.h>
 #include "AP_Logger_Backend.h"
 
@@ -16,6 +17,9 @@
 #ifndef HAL_LOGGER_WRITE_CHUNK_SIZE
 #define HAL_LOGGER_WRITE_CHUNK_SIZE 4096
 #endif
+
+// LOG_MAX_FILES is constrained to 500 by the AP_Logger frontend.
+static constexpr uint16_t LOGGER_FILE_MAX_LOGS = 500;
 
 class AP_Logger_File : public AP_Logger_Backend
 {
@@ -103,7 +107,26 @@ private:
     bool log_exists(const uint16_t lognum) const;
 
     bool dirent_to_log_num(const dirent *de, uint16_t &log_num) const;
+    // 目录扫描结果缓存：用位掩码记录实际存在的日志文件编号，
+    // 支持环绕编号和掉电恢复场景下的最新/最旧日志推断
+    struct LogDirectoryState {
+        Bitmask<LOGGER_FILE_MAX_LOGS> present;  // 各编号对应BIN文件是否存在
+        uint16_t count;         // 当前实际存在的日志文件总数
+        uint16_t newest;        // 最新日志编号（由LASTLOG.TXT标记锚定）
+        uint16_t oldest;        // 最旧日志编号（newest之后的第一个有效编号）
+        bool marker_found;      // LASTLOG.TXT中的编号是否与目录匹配
+    };
+    bool read_lastlog_marker(uint16_t &log_num, bool &marked_discard) const;
+    bool scan_log_directory(uint16_t marker_log_num,
+                            bool marker_valid,
+                            LogDirectoryState &state) const;
+    bool refresh_log_directory_state() const;
+    void invalidate_log_directory_state() { log_directory_state_valid = false; }
+    uint16_t log_num_from_list_entry(const uint16_t list_entry) const;
     bool write_lastlog_file(uint16_t log_num);
+
+    mutable LogDirectoryState log_directory_state;
+    mutable bool log_directory_state_valid = false;
 
     // write buffer
     ByteBuffer _writebuf{0};
@@ -117,8 +140,14 @@ private:
     uint32_t _get_log_time(const uint16_t log_num);
 
     void stop_logging(void) override;
+    void stop_logging_async(void) override;
+    bool stop_logging_pending(void) const override { return stop_logging_requested; }
+    bool stop_logging_succeeded(void) const override { return stop_logging_success; }
+    bool close_write_file();
 
     uint32_t last_messagewrite_message_sent;
+    volatile bool stop_logging_requested = false;
+    volatile bool stop_logging_success = true;
 
     // free-space checks; filling up SD cards under NuttX leads to
     // corrupt filesystems which cause loss of data, failure to gather
