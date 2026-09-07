@@ -50,8 +50,9 @@ static AP_HAL::OwnPtr<AP_HAL::SPIDevice> device;
 static MMCConfig mmcconfig;
 static SPIConfig lowspeed;
 static SPIConfig highspeed;
-static mmc_connect_error_t last_connect_error = MMC_CONNECT_ERROR_NONE;
-static uint8_t last_connect_error_r1 = 0xFFU;
+// 注：以下增强错误诊断需要 Dringl/ChibiOS fork 的 sdcard-mmc-improvements 分支
+// static mmc_connect_error_t last_connect_error = MMC_CONNECT_ERROR_NONE;
+// static uint8_t last_connect_error_r1 = 0xFFU;
 #endif
 
 #if defined(USE_POSIX)
@@ -83,7 +84,8 @@ static const char *fatfs_result_name(FRESULT result)
 }
 #endif
 
-#if HAL_USE_MMC_SPI
+// 注：以下增强错误诊断需要 Dringl/ChibiOS fork 的 sdcard-mmc-improvements 分支
+#if 0 && HAL_USE_MMC_SPI
 static const char *mmc_connect_error_name(mmc_connect_error_t error)
 {
     switch (error) {
@@ -188,8 +190,8 @@ static bool sdcard_init_internal(bool mount_filesystem)
     block_device_running = true;
     filesystem_mounted = false;
     last_mount_result = FR_NOT_READY;
-    last_connect_error = MMC_CONNECT_ERROR_NONE;
-    last_connect_error_r1 = 0xFFU;
+    // last_connect_error = MMC_CONNECT_ERROR_NONE;  // 增强诊断已禁用
+    // last_connect_error_r1 = 0xFFU;
 
     device = AP_HAL::get_HAL().spi->get_device("sdcard");
     if (!device) {
@@ -214,14 +216,14 @@ static bool sdcard_init_internal(bool mount_filesystem)
         mmcStart(&MMCD1, &mmcconfig);
 
         if (mmcConnect(&MMCD1) == HAL_FAILED) {
-            last_connect_error = MMCD1.connect_error;
-            last_connect_error_r1 = MMCD1.connect_error_r1;
+            // last_connect_error = MMCD1.connect_error;  // 增强诊断已禁用
+            // last_connect_error_r1 = MMCD1.connect_error_r1;
             last_mount_result = FR_NOT_READY;
             mmcStop(&MMCD1);
             continue;
         }
-        last_connect_error = MMC_CONNECT_ERROR_NONE;
-        last_connect_error_r1 = 0x00U;
+        // last_connect_error = MMC_CONNECT_ERROR_NONE;  // 增强诊断已禁用
+        // last_connect_error_r1 = 0x00U;
         BlockDeviceInfo info;
         if (mmcGetInfo(&MMCD1, &info) == HAL_SUCCESS) {
             printf("SDCard: connected, blocks=%lu block_size=%lu\n",
@@ -243,10 +245,8 @@ static bool sdcard_init_internal(bool mount_filesystem)
         last_mount_result = FR_OK;
         return true;
     }
-    if (last_connect_error != MMC_CONNECT_ERROR_NONE) {
-        printf("SDCard: MMC connect failed at %s (R1=0x%02x)\n",
-               mmc_connect_error_name(last_connect_error),
-               (unsigned)last_connect_error_r1);
+    if (false) {  // 增强错误诊断已禁用（需 Dringl/ChibiOS fork）
+        printf("SDCard: MMC connect failed\n");
     } else if (last_mount_result != FR_NOT_READY) {
         printf("SDCard: mount failed (FRESULT=%u %s)\n",
                (unsigned)last_mount_result,
@@ -317,14 +317,7 @@ bool sdcard_retry(void)
         const uint32_t now = AP_HAL::millis();
         if (last_failure_report_ms == 0 || now - last_failure_report_ms >= 30000U) {
             last_failure_report_ms = now;
-#if HAL_USE_MMC_SPI
-            if (last_connect_error != MMC_CONNECT_ERROR_NONE) {
-                GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
-                              "SDCard init: %s R1=0x%02x",
-                              mmc_connect_error_name(last_connect_error),
-                              (unsigned)last_connect_error_r1);
-            } else
-#endif
+            // 增强错误诊断已禁用（需 Dringl/ChibiOS fork）
             {
                 GCS_SEND_TEXT(MAV_SEVERITY_WARNING,
                               "SDCard mount: %s (%u)",
