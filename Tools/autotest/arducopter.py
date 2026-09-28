@@ -6,13 +6,17 @@ AP_FLAKE8_CLEAN
 
 from __future__ import annotations
 
+import binascii
 import copy
 import math
 import os
 import pathlib
 import re
 import shutil
+import socket
+import struct
 import tempfile
+import threading
 import time
 
 import numpy
@@ -20783,6 +20787,260 @@ class AutoTestCAN(AutoTestCopter):
 
     def tests(self):
         return self.testcan()
+
+
+class AutoTestCyphalCAN(AutoTestCopter):
+
+    def default_frame(self):
+        return "octa"
+
+    def default_speedup(self):
+        return 1
+
+    def default_parameter_list(self):
+        ret = super().default_parameter_list()
+        ret.update({
+            "CAN_D1_PROTOCOL": 15,
+            "CAN_P1_DRIVER": 1,
+            "FRAME_CLASS": 3,
+            "SIM_CAN_TYPE1": 1,
+        })
+        return ret
+
+    def init(self):
+        super().init()
+        # The CY_ subgroup is present only after CANManager creates its driver.
+        self.set_parameters({
+            "CAN_D1_CY_ESC_BM": 255,
+            "CAN_D1_CY_ESC_ID": 16,
+            "CAN_D1_CY_NODE": 10,
+        }, add_to_context=False)
+        self.reboot_sitl()
+
+    def open_cyphalcan_socket(self):
+        port = int(os.environ.get("SITL_CAN_MCAST_PORT", "57732"))
+        can_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        try:
+            can_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            can_socket.bind(("", port))
+            group = socket.inet_aton("239.65.82.0")
+            interface = socket.inet_aton(os.environ.get("SITL_MULTICAST_IF_ADDR", "127.0.0.1"))
+            can_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, group + interface)
+            can_socket.settimeout(0.2)
+            return can_socket
+        except Exception:
+            can_socket.close()
+            raise
+
+    def cyphalcan_throttle_frames(self, can_socket, timeout):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                packet, _ = can_socket.recvfrom(74)
+            except socket.timeout:
+                continue
+            if len(packet) != 18:
+                continue
+            magic, crc, flags, message_id = struct.unpack_from("<HHHI", packet)
+            if magic != 0x2934 or flags != 0 or binascii.crc_hqx(packet[4:], 0xFFFF) != crc:
+                continue
+            subject_id = (message_id >> 8) & 0x1FFF
+            if subject_id not in (6152, 6153):
+                continue
+            if message_id & 0x80000000 == 0:
+                raise NotAchievedException("CyphalCAN command used standard CAN identifier")
+            if message_id & 0x7F != 10:
+                raise NotAchievedException("CyphalCAN command used unexpected source node")
+            if packet[17] & 0xE0 != 0xE0:
+                raise NotAchievedException("CyphalCAN command has invalid transfer tail")
+            words = struct.unpack_from("<HHH", packet, 10)
+            throttle = [word & 0x3FFF for word in words]
+            throttle.append(
+                packet[16] |
+                ((words[2] >> 14) & 3) << 8 |
+                ((words[1] >> 14) & 3) << 10 |
+                ((words[0] >> 14) & 3) << 12
+            )
+            yield subject_id, throttle
+
+    def CyphalCANZeroOutput(self):
+        """Disarmed octacopter sends zero commands for all eight ESCs."""
+        with self.open_cyphalcan_socket() as can_socket:
+            remaining = {6152, 6153}
+            for subject_id, throttle in self.cyphalcan_throttle_frames(can_socket, 10):
+                if subject_id not in remaining:
+                    continue
+                if any(throttle):
+                    raise NotAchievedException("CyphalCAN command was not zero throttle")
+                remaining.remove(subject_id)
+                if not remaining:
+                    break
+
+            if remaining:
+                raise NotAchievedException("Missing CyphalCAN command subjects: %s" % sorted(remaining))
+
+    def CyphalCANMotorTest(self):
+        """Motor Test drives all eight ESC channels and then returns them to zero."""
+        with self.open_cyphalcan_socket() as can_socket:
+            self.run_cmd(
+                mavutil.mavlink.MAV_CMD_DO_MOTOR_TEST,
+                p1=1,
+                p2=mavutil.mavlink.MOTOR_TEST_THROTTLE_PWM,
+                p3=1300,
+                p4=2,
+                p5=8,
+                p6=0,
+                timeout=10,
+            )
+            active_motors = set()
+            for subject_id, throttle in self.cyphalcan_throttle_frames(can_socket, 25):
+                base = 0 if subject_id == 6152 else 4
+                active_motors.update(base + index + 1 for index, value in enumerate(throttle) if value > 0)
+                if len(active_motors) == 8:
+                    break
+            if len(active_motors) != 8:
+                raise NotAchievedException("Motor Test did not drive ESCs: %s" % sorted(set(range(1, 9)) - active_motors))
+
+            self.wait_statustext("finished motor test")
+            self.wait_disarmed()
+            remaining = {6152, 6153}
+            for subject_id, throttle in self.cyphalcan_throttle_frames(can_socket, 10):
+                if subject_id not in remaining:
+                    continue
+                if any(throttle):
+                    continue
+                remaining.remove(subject_id)
+                if not remaining:
+                    break
+            if remaining:
+                raise NotAchievedException("CyphalCAN throttle did not return to zero: %s" % sorted(remaining))
+
+    def CyphalCANMaskChangeDuringMotorTest(self):
+        """Disabling the ESC mask does not interrupt an active Motor Test."""
+        with self.open_cyphalcan_socket() as can_socket:
+            self.run_cmd(
+                mavutil.mavlink.MAV_CMD_DO_MOTOR_TEST,
+                p1=1,
+                p2=mavutil.mavlink.MOTOR_TEST_THROTTLE_PWM,
+                p3=1300,
+                p4=8,
+                p5=1,
+                p6=0,
+                timeout=10,
+            )
+            for subject_id, throttle in self.cyphalcan_throttle_frames(can_socket, 3):
+                if subject_id == 6152 and throttle[0] > 0:
+                    break
+            else:
+                raise NotAchievedException("Motor Test did not start CyphalCAN motor 1")
+
+        try:
+            self.set_parameter("CAN_D1_CY_ESC_BM", 0)
+            # A new socket cannot contain packets sent before the parameter changed.
+            with self.open_cyphalcan_socket() as can_socket:
+                for _ in range(3):
+                    seen_subjects = set()
+                    motor_still_running = False
+                    for subject_id, throttle in self.cyphalcan_throttle_frames(can_socket, 1):
+                        seen_subjects.add(subject_id)
+                        if subject_id == 6152 and throttle[0] > 0:
+                            motor_still_running = True
+                    if seen_subjects != {6152, 6153} or not motor_still_running:
+                        raise NotAchievedException("ESC mask change interrupted active CyphalCAN Motor Test")
+
+                self.wait_statustext("finished motor test")
+                self.wait_disarmed()
+                remaining = {6152, 6153}
+                for subject_id, throttle in self.cyphalcan_throttle_frames(can_socket, 3):
+                    if subject_id in remaining and not any(throttle):
+                        remaining.remove(subject_id)
+                    if not remaining:
+                        break
+                if remaining:
+                    raise NotAchievedException("CyphalCAN did not send zero throttle after Motor Test")
+        finally:
+            self.set_parameter("CAN_D1_CY_ESC_BM", 255)
+
+    def CyphalCANFeedbackPrearm(self):
+        """Missing or faulty ESC telemetry blocks arming; healthy telemetry permits it."""
+        self.context_collect('STATUSTEXT')
+        try:
+            self.run_cmd(
+                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+                p1=1,
+                want_result=mavutil.mavlink.MAV_RESULT_FAILED,
+            )
+            self.wait_statustext("CyphalCAN: ESC 1 telemetry missing", check_context=True, timeout=10)
+        finally:
+            self.context_stop_collecting('STATUSTEXT')
+
+        def frame(subject_id, priority, node_id, payload):
+            message_id = 0x80000000 | priority << 26 | 3 << 21 | subject_id << 8 | node_id
+            body = struct.pack("<HI", 0, message_id) + payload
+            crc = binascii.crc_hqx(body, 0xFFFF)
+            return struct.pack("<HH", 0x2934, crc) + body
+
+        port = int(os.environ.get("SITL_CAN_MCAST_PORT", "57732"))
+        group = "239.65.82.0"
+        stop = threading.Event()
+        fault_enabled = threading.Event()
+        fault_enabled.set()
+        send_errors = []
+
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as can_socket:
+            interface = socket.inet_aton(os.environ.get("SITL_MULTICAST_IF_ADDR", "127.0.0.1"))
+            can_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, interface)
+            healthy_messages = []
+            for node_id in range(16, 24):
+                healthy_messages.extend((
+                    frame(6160, 5, node_id, struct.pack("<HhH", 0, 0, 1 << 3) + b"\xE0"),
+                    frame(6161, 5, node_id, struct.pack("<HhBBB", 0, 240, 65, 65, 65) + b"\xE0"),
+                    frame(7509, 4, node_id, struct.pack("<IBBB", 1, 0, 0, 0) + b"\xE0"),
+                ))
+            faulty_messages = healthy_messages.copy()
+            faulty_messages[0] = frame(6160, 5, 16, struct.pack("<HhH", 0, 0, (1 << 3) | (1 << 4)) + b"\xE0")
+
+            def send_telemetry():
+                try:
+                    while not stop.is_set():
+                        messages = faulty_messages if fault_enabled.is_set() else healthy_messages
+                        for message in messages:
+                            can_socket.sendto(message, (group, port))
+                        stop.wait(0.025)
+                except OSError as ex:
+                    send_errors.append(ex)
+                    stop.set()
+
+            sender = threading.Thread(target=send_telemetry, daemon=True)
+            sender.start()
+            try:
+                self.delay_sim_time(1, reason="wait for all CyphalCAN ESC feedback")
+                self.context_collect('STATUSTEXT')
+                try:
+                    self.run_cmd(
+                        mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+                        p1=1,
+                        want_result=mavutil.mavlink.MAV_RESULT_FAILED,
+                    )
+                    self.wait_statustext("CyphalCAN: ESC 1 not ready", check_context=True, timeout=10)
+                finally:
+                    self.context_stop_collecting('STATUSTEXT')
+
+                fault_enabled.clear()
+                self.wait_ready_to_arm(timeout=30)
+                if send_errors:
+                    raise NotAchievedException("Cannot send CyphalCAN ESC telemetry: %s" % send_errors[0])
+            finally:
+                stop.set()
+                sender.join()
+
+    def tests(self):
+        return [
+            self.CyphalCANZeroOutput,
+            self.CyphalCANFeedbackPrearm,
+            self.CyphalCANMotorTest,
+            self.CyphalCANMaskChangeDuringMotorTest,
+        ]
 
 
 class AutoTestBattCAN(AutoTestCopter):

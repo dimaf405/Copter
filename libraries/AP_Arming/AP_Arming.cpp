@@ -68,6 +68,7 @@
 
   #include <AP_PiccoloCAN/AP_PiccoloCAN.h>
   #include <AP_DroneCAN/AP_DroneCAN.h>
+  #include <AP_CyphalCAN/AP_CyphalCAN.h>
 #endif
 
 #include <AP_Logger/AP_Logger.h>
@@ -1355,6 +1356,24 @@ bool AP_Arming::can_checks(bool report)
                         check_failed(Check::SYSTEM, report, "DroneCAN: %s", fail_msg);
                         return false;
                     }
+#endif
+                    break;
+                }
+                case AP_CAN::Protocol::CyphalCAN:
+                {
+#if AP_CYPHALCAN_ENABLED
+                    AP_CyphalCAN *ap_cyphalcan = AP_CyphalCAN::get_cyphalcan(i);
+                    if (ap_cyphalcan == nullptr) {
+                        check_failed(Check::SYSTEM, report, "CyphalCAN driver unavailable");
+                        return false;
+                    }
+                    if (!ap_cyphalcan->prearm_check(fail_msg, ARRAY_SIZE(fail_msg))) {
+                        check_failed(Check::SYSTEM, report, "CyphalCAN: %s", fail_msg);
+                        return false;
+                    }
+#else
+                    check_failed(Check::SYSTEM, report, "CyphalCAN not enabled");
+                    return false;
 #endif
                     break;
                 }

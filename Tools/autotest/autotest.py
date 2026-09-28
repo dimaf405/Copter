@@ -302,6 +302,7 @@ __bin_names = {
     "SITLPeriphUniversal": ("sitl_periph_universal", "AP_Periph"),
     "SITLPeriphBattMon": ("sitl_periph_battmon", "AP_Periph"),
     "CAN": "arducopter",
+    "CyphalCAN": "arducopter",
     "BattCAN": "arducopter",
 }
 
@@ -376,6 +377,7 @@ tester_class_map = {
     "test.Sub": ardusub.AutoTestSub,
     "test.Tracker": antennatracker.AutoTestTracker,
     "test.CAN": arducopter.AutoTestCAN,
+    "test.CyphalCAN": arducopter.AutoTestCyphalCAN,
     "test.BattCAN": arducopter.AutoTestBattCAN,
 }
 
@@ -1168,6 +1170,7 @@ if __name__ == "__main__":
     ]
 
     moresteps = [
+        'test.CyphalCAN',
         'test.CopterTests1a',
         'test.CopterTests1b',
         'test.CopterTests1c',

@@ -30,6 +30,7 @@
   #include <AP_CANManager/AP_CANManager.h>
   #include <AP_DroneCAN/AP_DroneCAN.h>
   #include <AP_PiccoloCAN/AP_PiccoloCAN.h>
+  #include <AP_CyphalCAN/AP_CyphalCAN.h>
 #endif
 
 #if NUM_SERVO_CHANNELS == 0
@@ -517,11 +518,13 @@ void SRV_Channels::push()
     }
 #endif
 
-#if HAL_ENABLE_DRONECAN_DRIVERS
+#if HAL_MAX_CAN_PROTOCOL_DRIVERS && HAL_CANMANAGER_ENABLED && \
+    (HAL_ENABLE_DRONECAN_DRIVERS || AP_PICCOLOCAN_ENABLED || AP_CYPHALCAN_ENABLED)
     // push outputs to CAN
     uint8_t can_num_drivers = AP::can().get_num_drivers();
     for (uint8_t i = 0; i < can_num_drivers; i++) {
         switch (AP::can().get_driver_type(i)) {
+#if HAL_ENABLE_DRONECAN_DRIVERS
             case AP_CAN::Protocol::DroneCAN: {
                 AP_DroneCAN *ap_dronecan = AP_DroneCAN::get_dronecan(i);
                 if (ap_dronecan == nullptr) {
@@ -530,6 +533,7 @@ void SRV_Channels::push()
                 ap_dronecan->SRV_push_servos();
                 break;
             }
+#endif
 #if AP_PICCOLOCAN_ENABLED
             case AP_CAN::Protocol::PiccoloCAN: {
                 AP_PiccoloCAN *ap_pcan = AP_PiccoloCAN::get_pcan(i);
@@ -540,12 +544,21 @@ void SRV_Channels::push()
                 break;
             }
 #endif
+#if AP_CYPHALCAN_ENABLED
+            case AP_CAN::Protocol::CyphalCAN: {
+                AP_CyphalCAN *ap_cyphalcan = AP_CyphalCAN::get_cyphalcan(i);
+                if (ap_cyphalcan != nullptr) {
+                    ap_cyphalcan->SRV_push();
+                }
+                break;
+            }
+#endif
             case AP_CAN::Protocol::None:
             default:
                 break;
         }
     }
-#endif // HAL_ENABLE_DRONECAN_DRIVERS
+#endif // CAN output drivers
 }
 
 void SRV_Channels::zero_rc_outputs()
