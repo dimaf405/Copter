@@ -24,8 +24,8 @@ const AP_Param::GroupInfo AP_CyphalCAN::var_info[] = {
     AP_GROUPINFO("NODE", 1, AP_CyphalCAN, _source_node_id, 10),
 
     // @Param: ESC_ID
-    // @DisplayName: First CyphalCAN ESC node ID
-    // @Description: Node ID of motor 1. Motors 2 to 8 must use the next seven consecutive IDs.
+    // @DisplayName: First CyphalCAN ESC feedback node ID
+    // @Description: First ESC node ID for feedback indexing. Does not change throttle frame IDs, slots, or ESC node IDs.
     // @Range: 16 40
     // @User: Advanced
     // @RebootRequired: True
@@ -48,7 +48,7 @@ const AP_Param::GroupInfo AP_CyphalCAN::var_info[] = {
 
     // @Param: ESC_BM
     // @DisplayName: CyphalCAN ESC channels
-    // @Description: Bitmask of motor outputs sent over CyphalCAN. Set only after checking ESC node IDs and motor order.
+    // @Description: Motor throttle slot mask. Zero disables sending; otherwise both groups broadcast with unselected slots zero.
     // @Bitmask: 0:Motor 1,1:Motor 2,2:Motor 3,3:Motor 4,4:Motor 5,5:Motor 6,6:Motor 7,7:Motor 8
     // @User: Advanced
     // @RebootRequired: True
