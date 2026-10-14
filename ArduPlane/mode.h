@@ -70,6 +70,9 @@ public:
 #if MODE_AUTOLAND_ENABLED
         AUTOLAND      = 26,
 #endif
+#if HAL_QUADPLANE_ENABLED
+        BENCH_DEMO    = 27,
+#endif
 
     // Mode number 30 reserved for "offboard" for external/lua control.
     };
@@ -939,6 +942,42 @@ protected:
 #endif  // QAUTOTUNE_ENABLED
 
 #endif  // HAL_QUADPLANE_ENABLED
+
+#if HAL_QUADPLANE_ENABLED
+class ModeBenchDemo : public Mode
+{
+public:
+    ModeBenchDemo();
+
+    Number mode_number() const override { return Number::BENCH_DEMO; }
+    const char *name() const override { return "Bench Demo"; }
+    const char *name4() const override { return "BDEM"; }
+
+    void update() override;
+    void run() override;
+    void output();
+
+    static const AP_Param::GroupInfo var_info[];
+
+private:
+    AP_Int8 enable;
+    AP_Int8 full_sweep;
+    uint32_t entered_ms;
+    bool was_armed;
+    bool stopped;
+    uint16_t active_esc_mask;
+    uint16_t tilt_vertical_pwm[4] {};
+    uint16_t tilt_other_pwm[4] {};
+
+    bool ready(char *reason, size_t reason_len, uint16_t *esc_mask = nullptr,
+               uint16_t *vertical_pwm = nullptr, uint16_t *other_pwm = nullptr) const;
+    bool _enter() override;
+    void _exit() override;
+    bool _pre_arm_checks(size_t buflen, char *buffer) const override;
+    void output_tilts(float position);
+    void output_surfaces(float position);
+};
+#endif // HAL_QUADPLANE_ENABLED
 
 class ModeTakeoff: public Mode
 {

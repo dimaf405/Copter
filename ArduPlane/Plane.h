@@ -171,6 +171,7 @@ public:
     friend class ModeQRTL;
     friend class ModeQAcro;
     friend class ModeQAutotune;
+    friend class ModeBenchDemo;
     friend class ModeTakeoff;
     friend class ModeThermal;
     friend class ModeLoiterAltQLand;
@@ -319,6 +320,7 @@ private:
     ModeQLand mode_qland;
     ModeQRTL mode_qrtl;
     ModeQAcro mode_qacro;
+    ModeBenchDemo mode_bench_demo;
     ModeLoiterAltQLand mode_loiter_qland;
 #if QAUTOTUNE_ENABLED
     ModeQAutotune mode_qautotune;

@@ -99,6 +99,9 @@ void Plane::rc_failsafe_short_on_event()
     case Mode::Number::LOITER_ALT_QLAND:
 #endif
     case Mode::Number::INITIALISING:
+#if HAL_QUADPLANE_ENABLED
+    case Mode::Number::BENCH_DEMO:
+#endif
         break;
     }
     if (failsafe.saved_mode_number != control_mode->mode_number()) {
@@ -232,6 +235,9 @@ void Plane::failsafe_long_on_event(enum failsafe_state fstype, ModeReason reason
     case Mode::Number::LOITER_ALT_QLAND:
 #endif
     case Mode::Number::INITIALISING:
+#if HAL_QUADPLANE_ENABLED
+    case Mode::Number::BENCH_DEMO:
+#endif
 #if MODE_AUTOLAND_ENABLED
     case Mode::Number::AUTOLAND:
 #endif

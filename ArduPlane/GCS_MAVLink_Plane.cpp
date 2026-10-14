@@ -17,6 +17,11 @@ MAV_TYPE GCS_Plane::frame_type() const
 uint8_t GCS_MAVLINK_Plane::base_mode() const
 {
     uint8_t _base_mode = MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
+#if HAL_QUADPLANE_ENABLED
+    const bool bench_demo = plane.control_mode == &plane.mode_bench_demo;
+#else
+    const bool bench_demo = false;
+#endif
 
     // work out the base_mode. This value is not very useful
     // for APM, but we calculate it as best we can so a generic
@@ -73,19 +78,22 @@ uint8_t GCS_MAVLINK_Plane::base_mode() const
         // positions", which APM does not currently do
         break;
     case Mode::Number::INITIALISING:
+#if HAL_QUADPLANE_ENABLED
+    case Mode::Number::BENCH_DEMO:
+#endif
         break;
     }
 
-    if (!plane.training_manual_pitch || !plane.training_manual_roll) {
+    if ((!plane.training_manual_pitch || !plane.training_manual_roll) && !bench_demo) {
         _base_mode |= MAV_MODE_FLAG_STABILIZE_ENABLED;        
     }
 
-    if (plane.control_mode != &plane.mode_manual && plane.control_mode != &plane.mode_initializing) {
+    if (plane.control_mode != &plane.mode_manual && plane.control_mode != &plane.mode_initializing && !bench_demo) {
         // stabiliser of some form is enabled
         _base_mode |= MAV_MODE_FLAG_STABILIZE_ENABLED;
     }
 
-    if (plane.g.stick_mixing != StickMixing::NONE && plane.control_mode != &plane.mode_initializing) {
+    if (plane.g.stick_mixing != StickMixing::NONE && plane.control_mode != &plane.mode_initializing && !bench_demo) {
         if ((plane.g.stick_mixing != StickMixing::VTOL_YAW) || (plane.control_mode == &plane.mode_auto)) {
             // all modes except INITIALISING have some form of manual
             // override if stick mixing is enabled

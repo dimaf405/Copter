@@ -95,6 +95,9 @@ bool Plane::allow_reverse_thrust(void) const
         allow |= reverse_thrust_enabled(UseReverseThrust::GUIDED);
         break;
     case Mode::Number::TAKEOFF:
+#if HAL_QUADPLANE_ENABLED
+    case Mode::Number::BENCH_DEMO:
+#endif
         allow = false;
         break;
     case Mode::Number::FLY_BY_WIRE_A:

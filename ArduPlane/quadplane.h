@@ -61,6 +61,7 @@ public:
     friend class ModeQStabilize;
     friend class ModeQAutotune;
     friend class ModeQAcro;
+    friend class ModeBenchDemo;
     friend class ModeLoiterAltQLand;
     friend class ModeAutoLand;
     friend class AP_SystemID;
