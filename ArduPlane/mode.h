@@ -966,6 +966,7 @@ private:
     bool was_armed;
     bool stopped;
     uint16_t active_esc_mask;
+    uint16_t active_servo_mask;
     uint16_t tilt_vertical_pwm[4] {};
     uint16_t tilt_other_pwm[4] {};
 
@@ -974,6 +975,7 @@ private:
     bool _enter() override;
     void _exit() override;
     bool _pre_arm_checks(size_t buflen, char *buffer) const override;
+    bool servo_enabled(uint8_t index);
     void output_tilts(float position);
     void output_surfaces(float position);
 };

@@ -4,28 +4,34 @@
 #if HAL_QUADPLANE_ENABLED
 
 namespace {
-constexpr uint32_t DEMO_PERIOD_MS = 8000;
+constexpr uint32_t DEMO_PERIOD_MS = 16000;
 constexpr uint32_t ALL_MOTORS_MASK = 0xFFU;
 constexpr float DEMO_MOTOR_THROTTLE = 0.05f;
 constexpr int16_t DEMO_SURFACE_CENTER_US = 1500;
 constexpr int16_t DEMO_AILERON_TRAVEL_US = 200;
 constexpr int16_t DEMO_VTAIL_TRAVEL_US = 100;
-constexpr uint16_t LEFT_VERTICAL_US = 2100;
-constexpr uint16_t RIGHT_VERTICAL_US = 900;
+constexpr uint16_t TILT_VERTICAL_US[] = {2050, 2050, 980, 1050};
 constexpr uint16_t VERTICAL_TOLERANCE_US = 25;
 constexpr uint16_t MIN_TILT_TRAVEL_US = 100;
+
+SRV_Channel::Function demo_servo_function(uint8_t index)
+{
+    return index < 4 ? SRV_Channel::k_motor_tilt :
+           index < 8 ? SRV_Channel::k_aileron :
+           index < 10 ? SRV_Channel::k_vtail_left : SRV_Channel::k_vtail_right;
+}
 
 bool get_tilt_endpoints(const SRV_Channel &channel, uint8_t index,
                         uint16_t &vertical_pwm, uint16_t &other_pwm)
 {
     const uint16_t min_pwm = channel.get_output_min();
     const uint16_t max_pwm = channel.get_output_max();
-    if (max_pwm < min_pwm + MIN_TILT_TRAVEL_US) {
+    if (index >= ARRAY_SIZE(TILT_VERTICAL_US) || max_pwm < min_pwm + MIN_TILT_TRAVEL_US) {
         return false;
     }
 
     if (index < 2) {
-        if (abs(int16_t(max_pwm) - int16_t(LEFT_VERTICAL_US)) > VERTICAL_TOLERANCE_US) {
+        if (abs(int16_t(max_pwm) - int16_t(TILT_VERTICAL_US[index])) > VERTICAL_TOLERANCE_US) {
             return false;
         }
         // The left servos move away from vertical toward smaller pulse widths.
@@ -34,7 +40,7 @@ bool get_tilt_endpoints(const SRV_Channel &channel, uint8_t index,
         return vertical_pwm >= other_pwm + MIN_TILT_TRAVEL_US;
     }
 
-    if (abs(int16_t(min_pwm) - int16_t(RIGHT_VERTICAL_US)) > VERTICAL_TOLERANCE_US) {
+    if (abs(int16_t(min_pwm) - int16_t(TILT_VERTICAL_US[index])) > VERTICAL_TOLERANCE_US) {
         return false;
     }
     // The right servos move away from vertical toward larger pulse widths.
@@ -115,10 +121,14 @@ bool ModeBenchDemo::ready(char *reason, size_t reason_len, uint16_t *esc_mask_ou
             hal.util->snprintf(reason, reason_len, "PWM%u unavailable", i + 1);
             return false;
         }
-        const SRV_Channel::Function expected = i < 4 ? SRV_Channel::k_motor_tilt :
-                                                i < 8 ? SRV_Channel::k_aileron :
-                                                i < 10 ? SRV_Channel::k_vtail_left : SRV_Channel::k_vtail_right;
-        if (channel->get_function() != expected) {
+        if (channel->get_function() == SRV_Channel::k_none) {
+            if (i < 4 && vertical_pwm != nullptr && other_pwm != nullptr) {
+                vertical_pwm[i] = 0;
+                other_pwm[i] = 0;
+            }
+            continue;
+        }
+        if (channel->get_function() != demo_servo_function(i)) {
             hal.util->snprintf(reason, reason_len, "PWM%u function incorrect", i + 1);
             return false;
         }
@@ -159,6 +169,12 @@ bool ModeBenchDemo::_enter()
         return false;
     }
 
+    active_servo_mask = 0;
+    for (uint8_t i = 0; i < 12; i++) {
+        if (SRV_Channels::srv_channel(i)->get_function() == demo_servo_function(i)) {
+            active_servo_mask |= 1U << i;
+        }
+    }
     entered_ms = AP_HAL::millis();
     was_armed = false;
     stopped = false;
@@ -199,12 +215,25 @@ void ModeBenchDemo::run()
     reset_controllers();
 }
 
+bool ModeBenchDemo::servo_enabled(uint8_t index)
+{
+    if (SRV_Channels::srv_channel(index)->get_function() != demo_servo_function(index)) {
+        // Disabling a channel latches until the next mode entry.
+        active_servo_mask &= ~(1U << index);
+    }
+    return (active_servo_mask & (1U << index)) != 0;
+}
+
 void ModeBenchDemo::output_tilts(float position)
 {
     // Bench positions use the measured pulse widths, independent of SERVOx_REVERSED.
     position = constrain_float(position, 0.0f, 1.0f);
     for (uint8_t i = 0; i < 4; i++) {
         SRV_Channel *const channel = SRV_Channels::srv_channel(i);
+        if (!servo_enabled(i)) {
+            channel->set_output_pwm(0, true);
+            continue;
+        }
         const float pwm = float(tilt_vertical_pwm[i]) +
                           float(int16_t(tilt_other_pwm[i]) - int16_t(tilt_vertical_pwm[i])) * position;
         channel->set_output_pwm(uint16_t(pwm));
@@ -215,16 +244,31 @@ void ModeBenchDemo::output_surfaces(float position)
 {
     position = constrain_float(position, -1.0f, 1.0f);
     for (uint8_t i = 4; i < 12; i += 2) {
-        SRV_Channel *const channel = SRV_Channels::srv_channel(i);
+        const bool first_enabled = servo_enabled(i);
+        const bool second_enabled = servo_enabled(i + 1);
+        if (!first_enabled) {
+            SRV_Channels::srv_channel(i)->set_output_pwm(0, true);
+        }
+        if (!second_enabled) {
+            SRV_Channels::srv_channel(i + 1)->set_output_pwm(0, true);
+        }
+        if (!first_enabled && !second_enabled) {
+            continue;
+        }
+        SRV_Channel *const channel = SRV_Channels::srv_channel(first_enabled ? i : i + 1);
         const int16_t travel_us = i < 8 ? DEMO_AILERON_TRAVEL_US : DEMO_VTAIL_TRAVEL_US;
         const int16_t direction = (i & 2U) == 0 ? 1 : -1;
-        // Each pair uses its first channel's reversal and sends identical raw PWM.
+        // Each pair uses its first enabled channel's reversal.
         const int16_t reverse = channel->get_reversed() ? -1 : 1;
         const int16_t offset = int16_t(travel_us * position) * direction * reverse;
         const int16_t pwm = constrain_int16(DEMO_SURFACE_CENTER_US + offset,
                                             channel->get_output_min(), channel->get_output_max());
-        channel->set_output_pwm(uint16_t(pwm));
-        SRV_Channels::srv_channel(i + 1)->set_output_pwm(uint16_t(pwm));
+        if (first_enabled) {
+            SRV_Channels::srv_channel(i)->set_output_pwm(uint16_t(pwm));
+        }
+        if (second_enabled) {
+            SRV_Channels::srv_channel(i + 1)->set_output_pwm(uint16_t(pwm));
+        }
     }
 }
 
