@@ -2,6 +2,8 @@
 
 This driver implements the ESC message subset of `CyphalCAN协议-V1.0.2-2024`: throttle subjects 6152 and 6153, feedback subjects 6160 and 6161, and heartbeat subject 7509. It uses Cyphal/CAN v1 message framing on classic 29-bit CAN. It does not implement the document's register, node-information, file-transfer, firmware-update, or node-ID-setting services. It does not share a CAN bus with DroneCAN v0 devices.
 
+It optionally supports the separate vendor standard-frame protocol in `舵机CAN总线通信协议（标准帧）` on the same physical bus. Servo nodes 1 through 4 follow the final physical SERVO1 through SERVO4 output values, converted to signed angles. This is not a Cyphal servo or a general CANopen master. The feature defaults off; position output additionally requires explicit mechanical calibration confirmation. See [CAN servo calibration, setup and bus load testing](CAN倾转舵机-接入与负载测试.md). The protocol provides no documented torque-disable command or loss-of-communication action; stopping position commands does not guarantee torque release.
+
 For X7 Pro flashing, Octa frame setup, motor mapping, and propeller-free bench testing, see [CUAV X7 Pro 使用与电机测试指南](CUAV-X7-Pro-八轴使用与电机测试.md).
 
 ## CUAV X7 Pro setup

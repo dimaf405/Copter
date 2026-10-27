@@ -39,8 +39,21 @@ private:
         uint8_t mode;
     };
 
+    struct ServoState {
+        uint32_t position_ms;
+        uint32_t status_ms;
+        uint32_t abort_code;
+        int16_t position_ddeg;
+        uint16_t current_cA;
+        int8_t temperature_C;
+        bool low_voltage;
+    };
+
     void loop();
     void send_throttle();
+    void send_servos();
+    void poll_servos();
+    void log_servos();
     void handle_frame(const AP_HAL::CANFrame &frame);
     bool send_frame(const AP_HAL::CANFrame &frame);
     bool read_frame(AP_HAL::CANFrame &frame, uint32_t timeout_us);
@@ -58,12 +71,27 @@ private:
     int16_t _active_source_node_id = 0;
     int16_t _active_esc_base_id = 0;
     int16_t _active_esc_mask = 0;
+    int8_t _active_servo_mask = 0;
+    bool _active_servo_calibrated = false;
+    int16_t _active_servo_zero[4] {};
+    int16_t _active_servo_span = 1000;
+    ServoState _servos[4] {};
+    int16_t _servo_target[4] {};
+    uint8_t _servo_valid_mask = 0;
+    uint8_t _servo_poll_index = 0;
+    uint8_t _servo_poll_count = 0;
+    uint32_t _servo_tx_failures = 0;
 
     AP_Int16 _source_node_id;
     AP_Int16 _esc_base_id;
     AP_Int16 _esc_rate_hz;
     AP_Int16 _pole_pairs;
     AP_Int16 _esc_mask;
+    AP_Int8 _servo_mask;
+    AP_Int8 _servo_calibrated;
+    AP_Int16 _servo_rate_hz;
+    AP_Int16 _servo_zero[4];
+    AP_Int16 _servo_span;
 };
 
 #endif // AP_CYPHALCAN_ENABLED
